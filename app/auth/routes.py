@@ -92,8 +92,14 @@ def login():
 
 @auth_bp.route('/logout')
 def logout():
+    session_record = UserSession.query.filter_by(user_id=current_user.id,is_active=True).first()
+
+    if session_record:
+        session_record.is_active = False
+        db.session.commit()
+
     logout_user()
-    return redirect(url_for('auth_bp.login'))
+return redirect(url_for('auth_bp.login'))
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
