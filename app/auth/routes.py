@@ -5,7 +5,7 @@ from app.models import User, Company, Employee, Role, UserSession
 from app.forms import RegistrationForm, LoginForm, UpdateProfileForm
 import datetime
 import uuid
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError,SQLAlchemyError
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -67,27 +67,37 @@ def register():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard_bp.dashboard'))
+
     form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
-        if user and bcrypt.check_password_hash(user.password_hash, form.password.data):
-            login_user(user, remember=form.remember.data)
-            user.last_login_at = datetime.datetime.now(datetime.timezone.utc)
-            
-            session_token = uuid.uuid4().hex
-            user_session = UserSession(
-                user_id=user.id,
-                session_token=session_token,
-                ip_address=request.remote_addr,
-                user_agent=request.headers.get('User-Agent')
-            )
-            db.session.add(user_session)
-            db.session.commit()
-            
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('dashboard_bp.dashboard'))
-        else:
-            flash('Login Unsuccessful. Please check email and password', 'danger')
+    try:
+        if form.validate_on_submit():
+            user = User.query.filter_by(email=form.email.data).first()
+            if user and bcrypt.check_password_hash(user.password_hash, form.password.data):
+                login_user(user, remember=form.remember.data)
+                user.last_login_at = datetime.datetime.now(datetime.timezone.utc)
+                
+                session_token = uuid.uuid4().hex
+                user_session = UserSession(
+                    user_id=user.id,
+                    session_token=session_token,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+                db.session.add(user_session)
+                db.session.commit()
+                
+                next_page = request.args.get('next')
+                return redirect(next_page) if next_page else redirect(url_for('dashboard_bp.dashboard'))
+            else:
+                flash('Login Unsuccessful. Please check email and password', 'danger')
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        flash('A database error occurred. Please try again.','danger')
+    except Exception as e:
+        db.session.rollback()
+        flash('An unexpected error occurred during login.','danger')
+        
     return render_template('auth/login.html', title='Login', form=form)
 
 @auth_bp.route('/logout')
@@ -105,21 +115,32 @@ return redirect(url_for('auth_bp.login'))
 @login_required
 def profile():
     form = UpdateProfileForm()
-    employee = current_user.employee
-    
-    if form.validate_on_submit():
-        employee.full_name = form.full_name.data
-        employee.phone = form.phone.data
-        
-        if form.password.data:
-            hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-            current_user.password_hash = hashed_password
+    try:
+        employee = current_user.employee
+        if form.validate_on_submit():
+            if not employee:
+                flash('Employee profile not found.', 'danger')
+                return redirect(url_for('dashboard_bp.dashboard'))
+            employee.full_name = form.full_name.data
+            employee.phone = form.phone.data
             
-        db.session.commit()
-        flash('Your profile has been updated!', 'success')
-        return redirect(url_for('auth_bp.profile'))
-    elif request.method == 'GET':
-        form.full_name.data = employee.full_name if employee else ""
-        form.phone.data = employee.phone if employee else ""
-        
+            if form.password.data:
+                hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+                current_user.password_hash = hashed_password
+                
+            db.session.commit()
+            flash('Your profile has been updated!', 'success')
+            return redirect(url_for('auth_bp.profile'))
+        elif request.method == 'GET':
+            if employee:
+                form.full_name.data = employee.full_name
+                form.phone.data = employee.phone
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        flash('A database error occurred while updating your profile.','danger')
+    except Exception as e:
+        db.session.rollback()
+        flash('An unexpected error occurred.','danger')
+
     return render_template('main/profile.html', title='Profile', form=form)
