@@ -5,6 +5,7 @@ from app.models import User, Company, Employee, Role, UserSession
 from app.forms import RegistrationForm, LoginForm, UpdateProfileForm
 import datetime
 import uuid
+from sqlalchemy.exc import IntegrityError
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -18,37 +19,48 @@ def register():
 
     form = RegistrationForm()
     if form.validate_on_submit():
-        admin_role = Role.query.filter_by(name='Admin').first()
-        if not admin_role:
-            admin_role = Role(name='Admin', description='Full system management')
-            db.session.add(admin_role)
+        try:
+            existing_user = User.query.filter_by(email=form.email.data).first()
+            if existing_user:
+                flash('Email already registered.', 'danger')
+                return render_template('auth/register.html', title='Register', form=form)
+            admin_role = Role.query.filter_by(name='Admin').first()
+            if not admin_role:
+                admin_role = Role(name='Admin', description='Full system management')
+                db.session.add(admin_role)
+                db.session.commit()
+
+            company = Company(company_name=form.company_name.data)
+            db.session.add(company)
+            db.session.flush()
+
+            hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+
+            user = User(
+                company_id=company.id,
+                role_id=admin_role.id,
+                email=form.email.data,
+                password_hash=hashed_password
+            )
+            db.session.add(user)
+            db.session.flush()
+
+            employee = Employee(
+                user_id=user.id,
+                company_id=company.id,
+                full_name=form.full_name.data
+            )
+            db.session.add(employee)
             db.session.commit()
 
-        company = Company(company_name=form.company_name.data)
-        db.session.add(company)
-        db.session.flush()
-        
-        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-
-        user = User(
-            company_id=company.id,
-            role_id=admin_role.id,
-            email=form.email.data,
-            password_hash=hashed_password
-        )
-        db.session.add(user)
-        db.session.flush()
-
-        employee = Employee(
-            user_id=user.id,
-            company_id=company.id,
-            full_name=form.full_name.data
-        )
-        db.session.add(employee)
-        db.session.commit()
-
-        flash('Your account has been created! You can now log in.', 'success')
-        return redirect(url_for('auth_bp.login'))
+            flash('Your account has been created! You can now log in.', 'success')
+            return redirect(url_for('auth_bp.login'))
+        except IntegrityError:
+            db.session.rollback()
+            flash('A database integrity error occurred.', 'danger')
+        except Exception as e:
+            db.session.rollback()
+            flash('Something went wrong. Please try again.', 'danger')
     return render_template('auth/register.html', title='Register', form=form)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
