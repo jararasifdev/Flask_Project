@@ -97,7 +97,7 @@ def login():
     except Exception as e:
         db.session.rollback()
         flash('An unexpected error occurred during login.','danger')
-        
+
     return render_template('auth/login.html', title='Login', form=form)
 
 @auth_bp.route('/logout')
@@ -109,7 +109,7 @@ def logout():
         db.session.commit()
 
     logout_user()
-return redirect(url_for('auth_bp.login'))
+    return redirect(url_for('auth_bp.login'))
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
