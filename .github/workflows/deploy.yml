@@ -1,0 +1,29 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - deployment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 54.196.111.197
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            if [ ! -d "Flask_Project" ]; then
+              git clone https://github.com/jararasifdev/Flask_Project.git
+            fi
+            cd Flask_Project
+            
+            git fetch origin deployment
+            git checkout deployment
+            git pull origin deployment
+            
+            docker-compose down
+            docker-compose up --build -d
