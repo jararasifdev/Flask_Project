@@ -47,6 +47,3 @@ MANIFEST
 
 #odt files
 *.odt
-
-#migrations
-migrations/
