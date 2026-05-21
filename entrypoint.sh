@@ -7,6 +7,10 @@ while ! nc -z db 5432; do
 done
 echo "PostgreSQL started"
 
+# Initialize database tables and roles
+echo "Initializing database..."
+python init_db.py
+
 # Run migrations
 echo "Running database migrations..."
 flask db upgrade
