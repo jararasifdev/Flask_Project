@@ -25,7 +25,7 @@ services:
     ports:
       - "80:8000"
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-flaskuser}:${DB_PASSWORD:-flaskpassword}@db:5432/${DB_NAME:-flaskdb}
+      - DATABASE_URI=postgresql://${DB_USER:-flaskuser}:${DB_PASSWORD:-flaskpassword}@db:5432/${DB_NAME:-flaskdb}
       - SECRET_KEY=${SECRET_KEY:-mysecretkey}
       - FLASK_APP=run.py
       - FLASK_ENV=production
