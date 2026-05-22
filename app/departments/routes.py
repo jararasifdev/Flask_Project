@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
 from app.models import Department
@@ -30,6 +30,26 @@ def create_department():
         flash('Department created successfully.', 'success')
         return redirect(url_for('departments_bp.list_departments'))
     return render_template('departments/create.html', form=form, title="Create Department")
+
+@departments_bp.route('/departments/<department_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required('Admin')
+def edit_department(department_id):
+    department = Department.query.filter_by(id=department_id, company_id=current_user.company_id).first_or_404()
+    form = DepartmentForm()
+    
+    if form.validate_on_submit():
+        department.name = form.name.data
+        department.description = form.description.data
+        db.session.commit()
+        flash('Department updated successfully.', 'success')
+        return redirect(url_for('departments_bp.list_departments'))
+        
+    elif request.method == 'GET':
+        form.name.data = department.name
+        form.description.data = department.description
+        
+    return render_template('departments/edit.html', form=form, department=department, title="Edit Department")
 
 @departments_bp.route('/departments/<department_id>/delete', methods=['POST'])
 @login_required
