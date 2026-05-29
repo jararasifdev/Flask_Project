@@ -17,3 +17,8 @@ class Company(db.Model):
     users = db.relationship('User', backref='company', lazy=True)
     departments = db.relationship('Department', backref='company', lazy=True)
     employees = db.relationship('Employee', backref='company', lazy=True)
+    clients = db.relationship('Client', backref='company', lazy=True)
+    projects = db.relationship('Project', backref='company', lazy=True)
+    expense_categories = db.relationship('ExpenseCategory', backref='company', lazy=True)
+    expenses = db.relationship('Expense', backref='company', lazy=True)
+    budget_alerts = db.relationship('BudgetAlert', backref='company', lazy=True)
