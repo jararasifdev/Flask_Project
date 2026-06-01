@@ -25,11 +25,16 @@ def create_app(config_class=Config):
     from app.dashboard.routes import dashboard_bp
     from app.employees.routes import employees_bp
     from app.departments.routes import departments_bp
-
+    from app.clients.routes import clients_bp
+    from app.projects.routes import projects_bp
+    from app.expenses.routes import expenses_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(employees_bp)
     app.register_blueprint(departments_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(clients_bp)
+    app.register_blueprint(projects_bp)
+    app.register_blueprint(expenses_bp)
 
     return app
