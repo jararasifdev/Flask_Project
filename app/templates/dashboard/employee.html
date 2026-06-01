@@ -15,7 +15,7 @@
                 </div>
                 <div>
                     <button class="btn btn-light text-primary fw-semibold me-2" disabled>Log Hours</button>
-                    <button class="btn btn-outline-light" disabled>Submit Expense</button>
+                    <a href="{{ url_for('expenses_bp.submit') }}" class="btn btn-outline-light">Submit Expense</a>
                 </div>
             </div>
         </div>
@@ -86,4 +86,52 @@
         </div>
     </div>
 </div>
+
+<div class="row">
+    <!-- Chart 1: My Expenses Status -->
+    <div class="col-md-8 mb-4 mx-auto">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">My Expenses Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="myExpenseStatusChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // My Expense Status Chart
+    const ctxMyExpense = document.getElementById('myExpenseStatusChart').getContext('2d');
+    const myExpLabels = JSON.parse('{{ charts.my_expenses_status.labels | tojson | safe }}');
+    const myExpData = JSON.parse('{{ charts.my_expenses_status.data | tojson | safe }}');
+    
+    if (myExpLabels.length > 0) {
+        new Chart(ctxMyExpense, {
+            type: 'doughnut',
+            data: {
+                labels: myExpLabels,
+                datasets: [{
+                    data: myExpData,
+                    backgroundColor: ['#ffc107', '#198754', '#dc3545', '#0d6efd', '#6c757d'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+    } else {
+        document.getElementById('myExpenseStatusChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">You have not submitted any expenses yet.</p>';
+    }
+});
+</script>
 {% endblock %}

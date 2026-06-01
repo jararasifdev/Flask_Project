@@ -14,7 +14,8 @@
                     <p class="mb-0 text-white-50">Manage payroll, invoices, and financial reports.</p>
                 </div>
                 <div>
-                    <button class="btn btn-light text-primary fw-semibold" disabled>Generate Payroll</button>
+                    <a href="{{ url_for('expenses_bp.index') }}" class="btn btn-light text-primary fw-semibold me-2">View Expenses</a>
+                    <button class="btn btn-outline-light" disabled>Generate Payroll</button>
                 </div>
             </div>
         </div>
@@ -85,4 +86,52 @@
         </div>
     </div>
 </div>
+
+<div class="row">
+    <!-- Chart 1: Company Expenses Status -->
+    <div class="col-md-8 mb-4 mx-auto">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Company Expenses Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="expenseStatusChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Expense Status Chart
+    const ctxExpense = document.getElementById('expenseStatusChart').getContext('2d');
+    const expLabels = JSON.parse('{{ charts.expenses_status.labels | tojson | safe }}');
+    const expData = JSON.parse('{{ charts.expenses_status.data | tojson | safe }}');
+    
+    if (expLabels.length > 0) {
+        new Chart(ctxExpense, {
+            type: 'doughnut',
+            data: {
+                labels: expLabels,
+                datasets: [{
+                    data: expData,
+                    backgroundColor: ['#ffc107', '#198754', '#dc3545', '#0d6efd', '#6c757d'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+    } else {
+        document.getElementById('expenseStatusChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No expenses reported yet.</p>';
+    }
+});
+</script>
 {% endblock %}

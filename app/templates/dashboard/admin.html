@@ -86,4 +86,145 @@
         </div>
     </div>
 </div>
+
+<div class="row">
+    <!-- Chart 1: Project Status -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Project Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="projectStatusChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chart 2: Expenses by Category -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Approved Expenses by Category</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="expenseCategoryChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Chart 3: Projects per Client -->
+    <div class="col-md-12 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Projects per Client</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="clientProjectChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Project Status Chart
+    const ctxProject = document.getElementById('projectStatusChart').getContext('2d');
+    const projectLabels = JSON.parse('{{ charts.projects_status.labels | tojson | safe }}');
+    const projectData = JSON.parse('{{ charts.projects_status.data | tojson | safe }}');
+    
+    if (projectLabels.length > 0) {
+        new Chart(ctxProject, {
+            type: 'doughnut',
+            data: {
+                labels: projectLabels,
+                datasets: [{
+                    data: projectData,
+                    backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    } else {
+        document.getElementById('projectStatusChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No project data available.</p>';
+    }
+
+    // Expenses Category Chart
+    const ctxExpense = document.getElementById('expenseCategoryChart').getContext('2d');
+    const expenseLabels = JSON.parse('{{ charts.expenses_category.labels | tojson | safe }}');
+    const expenseData = JSON.parse('{{ charts.expenses_category.data | tojson | safe }}');
+    
+    if (expenseLabels.length > 0) {
+        new Chart(ctxExpense, {
+            type: 'bar',
+            data: {
+                labels: expenseLabels,
+                datasets: [{
+                    label: 'Amount ($)',
+                    data: expenseData,
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    } else {
+        document.getElementById('expenseCategoryChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No approved expenses yet.</p>';
+    }
+
+    // Projects per Client Chart
+    const ctxClientProj = document.getElementById('clientProjectChart').getContext('2d');
+    const clientProjLabels = JSON.parse('{{ charts.projects_per_client.labels | tojson | safe }}');
+    const clientProjData = JSON.parse('{{ charts.projects_per_client.data | tojson | safe }}');
+    
+    if (clientProjLabels.length > 0) {
+        new Chart(ctxClientProj, {
+            type: 'bar',
+            data: {
+                labels: clientProjLabels,
+                datasets: [{
+                    label: 'Number of Projects',
+                    data: clientProjData,
+                    backgroundColor: '#198754',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 } 
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    } else {
+        document.getElementById('clientProjectChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No client data available.</p>';
+    }
+});
+</script>
 {% endblock %}
