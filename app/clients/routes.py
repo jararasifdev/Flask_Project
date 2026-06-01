@@ -27,3 +27,13 @@ def add_client():
 
     clients = Client.query.filter_by(company_id=current_user.company_id).all()
     return render_template('clients/index.html', clients=clients, form=form)
+
+@clients_bp.route('/<client_id>/delete', methods=['POST'])
+@login_required
+@role_required('Admin')
+def delete_client(client_id):
+    client = Client.query.filter_by(id=client_id, company_id=current_user.company_id).first_or_404()
+    db.session.delete(client)
+    db.session.commit()
+    flash('Client deleted successfully!', 'success')
+    return redirect(url_for('clients_bp.add_client'))
