@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import Department
-from app.forms import DepartmentForm
+from app.models import Department, Employee, User, Role
+from app.forms import DepartmentForm, AssignEmployeeForm
 from app.utils.decorators import role_required
 
 departments_bp = Blueprint('departments_bp', __name__)
@@ -31,25 +31,68 @@ def create_department():
         return redirect(url_for('departments_bp.list_departments'))
     return render_template('departments/create.html', form=form, title="Create Department")
 
-@departments_bp.route('/departments/<department_id>/edit', methods=['GET', 'POST'])
+@departments_bp.route('/departments/<department_id>/view', methods=['GET', 'POST'])
 @login_required
 @role_required('Admin')
-def edit_department(department_id):
+def view_department(department_id):
     department = Department.query.filter_by(id=department_id, company_id=current_user.company_id).first_or_404()
     form = DepartmentForm()
+    assign_form = AssignEmployeeForm()
+
+    employees = Employee.query.join(User).join(Role).filter(
+        Employee.company_id == current_user.company_id,
+        Employee.department_id.is_(None),
+        Role.name != 'Admin'
+    ).all()
+    assign_form.employee_id.choices = [(e.id, e.full_name) for e in employees]
     
     if form.validate_on_submit():
         department.name = form.name.data
         department.description = form.description.data
         db.session.commit()
         flash('Department updated successfully.', 'success')
-        return redirect(url_for('departments_bp.list_departments'))
+        return redirect(url_for('departments_bp.view_department', department_id=department.id))
         
     elif request.method == 'GET':
         form.name.data = department.name
         form.description.data = department.description
         
-    return render_template('departments/edit.html', form=form, department=department, title="Edit Department")
+    return render_template('departments/view.html', form=form, assign_form=assign_form, department=department, title="Manage Department")
+
+@departments_bp.route('/departments/<department_id>/assign', methods=['POST'])
+@login_required
+@role_required('Admin')
+def assign_employee(department_id):
+    department = Department.query.filter_by(id=department_id, company_id=current_user.company_id).first_or_404()
+    assign_form = AssignEmployeeForm()
+    
+    employees = Employee.query.join(User).join(Role).filter(
+        Employee.company_id == current_user.company_id,
+        Employee.department_id.is_(None),
+        Role.name != 'Admin'
+    ).all()
+    assign_form.employee_id.choices = [(e.id, e.full_name) for e in employees]
+    
+    if assign_form.validate_on_submit():
+        emp_id = assign_form.employee_id.data
+        employee = Employee.query.filter_by(id=emp_id, company_id=current_user.company_id).first_or_404()
+        employee.department_id = department.id
+        db.session.commit()
+        flash(f'{employee.full_name} assigned to department successfully.', 'success')
+        
+    return redirect(url_for('departments_bp.view_department', department_id=department.id))
+
+@departments_bp.route('/departments/<department_id>/remove_employee/<employee_id>', methods=['POST'])
+@login_required
+@role_required('Admin')
+def remove_employee_from_department(department_id, employee_id):
+    department = Department.query.filter_by(id=department_id, company_id=current_user.company_id).first_or_404()
+    employee = Employee.query.filter_by(id=employee_id, department_id=department.id, company_id=current_user.company_id).first_or_404()
+    
+    employee.department_id = None
+    db.session.commit()
+    flash(f'{employee.full_name} removed from the department.', 'success')
+    return redirect(url_for('departments_bp.view_department', department_id=department.id))
 
 @departments_bp.route('/departments/<department_id>/delete', methods=['POST'])
 @login_required
