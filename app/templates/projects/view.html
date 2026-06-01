@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('projects_bp.create_project') }}" class="text-decoration-none text-muted mb-2 d-inline-block"><i class="bi bi-arrow-left me-1"></i> Back to Projects</a>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold mb-1">{{ project.name }}</h2>
+            <p class="text-muted mb-0"><i class="bi bi-person-badge me-1"></i> Manager: {{ project.project_manager.full_name if project.project_manager else 'Unassigned' }} | <i class="bi bi-building me-1"></i> Client: {{ project.client.client_name }}</p>
+        </div>
+        {% set status_class = {
+            'In Progress': 'bg-primary',
+            'Completed': 'bg-success',
+            'Not Started': 'bg-secondary',
+            'On Hold': 'bg-warning',
+            'Cancelled': 'bg-danger'
+        }.get(project.status, 'bg-secondary') %}
+        {% if current_user.role.name in ['Admin', 'Project Manager'] %}
+        <form method="POST" action="{{ url_for('projects_bp.change_project_status', project_id=project.id) }}" class="d-flex align-items-center">
+            <select name="status" class="form-select form-select-sm {{ status_class }} text-white border-0 fw-semibold" onchange="this.form.submit()" style="width: auto; background-image: none;">
+                <option value="Not Started" class="bg-white text-dark" {% if project.status == 'Not Started' %}selected{% endif %}>Not Started</option>
+                <option value="In Progress" class="bg-white text-dark" {% if project.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                <option value="On Hold" class="bg-white text-dark" {% if project.status == 'On Hold' %}selected{% endif %}>On Hold</option>
+                <option value="Completed" class="bg-white text-dark" {% if project.status == 'Completed' %}selected{% endif %}>Completed</option>
+                <option value="Cancelled" class="bg-white text-dark" {% if project.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+        </form>
+        {% else %}
+        <span class="badge {{ status_class }} fs-6">{{ project.status }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mb-4">
+        <!-- Budget Tracking -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3">Budget Overview</h5>
+                {% set budget = project.budget|float %}
+                {% set expenses = total_expenses|float %}
+                {% set percentage = 0 %}
+                {% if budget > 0 %}
+                    {% set percentage = (expenses / budget * 100)|round(1) %}
+                {% endif %}
+                
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="fw-semibold">Spent: ${{ "{:,.2f}".format(expenses) }}</span>
+                    <span class="text-muted">Total Budget: ${{ "{:,.2f}".format(budget) }}</span>
+                </div>
+                <div class="progress mb-2" style="height: 12px;">
+                    <div class="progress-bar {% if percentage > 90 %}bg-danger{% elif percentage > 75 %}bg-warning{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ percentage }}%;" aria-valuenow="{{ percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">{{ percentage }}% Used</small>
+                </div>
+                
+                {% if project.budget_alerts %}
+                    <div class="mt-4">
+                        <h6 class="fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Budget Alerts</h6>
+                        <ul class="list-group list-group-flush">
+                            {% for alert in project.budget_alerts %}
+                                <li class="list-group-item text-danger border-0 px-0 py-1"><small>{{ alert.triggered_at.strftime('%Y-%m-%d %H:%M') }} - {{ alert.message }}</small></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Expenses -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Project Expenses</h5>
+                <a href="{{ url_for('expenses_bp.submit') }}" class="btn btn-sm btn-outline-primary">Submit Expense</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in project.expenses[:5] %}
+                            <tr>
+                                <td>{{ expense.submitted_at.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ expense.category.name }}</td>
+                                <td class="fw-semibold">${{ "{:,.2f}".format(expense.amount) }}</td>
+                                <td>
+                                    {% if expense.status == 'Pending' %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif expense.status == 'Approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted">No expenses recorded yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <!-- Team Members -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Team</h5>
+                {% if current_user.role.name in ['Admin', 'Project Manager'] %}
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#assignEmployeeModal"><i class="bi bi-person-plus"></i></button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for employee in active_employees %}
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle bg-light-primary text-primary d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px; font-weight: bold; border-radius: 50%;">
+                                    {{ employee.full_name[0]|upper }}
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-semibold">{{ employee.full_name }}</h6>
+                                    <small class="text-muted">{{ employee.department.name if employee.department else 'No Department' }}</small>
+                                </div>
+                            </div>
+                            {% if current_user.role.name in ['Admin', 'Project Manager'] %}
+                            <form method="POST" action="{{ url_for('projects_bp.remove_project_employee', project_id=project.id, employee_id=employee.id) }}" class="m-0 p-0">
+                                <button type="submit" class="btn btn-sm text-danger border-0 bg-transparent p-0 ms-2" onclick="return confirm('Are you sure you want to remove {{ employee.full_name }} from this project?');">
+                                    <i class="bi bi-person-x fs-5"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </li>
+                    {% else %}
+                        <li class="list-group-item px-0 text-muted">No team members assigned.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Employee Modal -->
+<div class="modal fade" id="assignEmployeeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{{ url_for('projects_bp.assign_project', project_id=project.id) }}">
+                {{ assign_form.hidden_tag() }}
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">Assign Team Member</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {{ assign_form.employee_id.label(class="form-label fw-semibold") }}
+                        {{ assign_form.employee_id(class="form-select") }}
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    {{ assign_form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <a href="{{ url_for('expenses_bp.index') }}" class="text-decoration-none text-muted mb-3 d-inline-block"><i class="bi bi-arrow-left me-1"></i> Back to Expenses</a>
+        
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h4 class="fw-bold mb-0">Submit New Expense</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('expenses_bp.submit') }}" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.project_id.label(class="form-label fw-semibold") }}
+                            {{ form.project_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.category_id.label(class="form-label fw-semibold") }}
+                            {{ form.category_id(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.amount.label(class="form-label fw-semibold") }}
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            {{ form.amount(class="form-control" + (" is-invalid" if form.amount.errors else "")) }}
+                        </div>
+                        {% for error in form.amount.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label fw-semibold") }}
+                        {{ form.description(class="form-control", rows="3") }}
+                    </div>
+                    
+                    <div class="mb-4">
+                        {{ form.receipt_file.label(class="form-label fw-semibold") }}
+                        {{ form.receipt_file(class="form-control" + (" is-invalid" if form.receipt_file.errors else "")) }}
+                        <div class="form-text">Optional. Allowed formats: JPG, PNG, PDF.</div>
+                        {% for error in form.receipt_file.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
