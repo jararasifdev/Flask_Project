@@ -8,7 +8,7 @@
                 <h5 class="fw-bold mb-0">Add Category</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('expenses_bp.categories') }}">
+                <form method="POST" action="{{ url_for('expenses_bp.manage_categories') }}">
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
                         {{ form.name.label(class="form-label fw-semibold") }}

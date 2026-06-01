@@ -4,8 +4,8 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold">Expenses</h2>
     <div>
-        <a href="{{ url_for('expenses_bp.categories') }}" class="btn btn-light border me-2">Manage Categories</a>
-        <a href="{{ url_for('expenses_bp.submit') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Submit Expense</a>
+        <a href="{{ url_for('expenses_bp.manage_categories') }}" class="btn btn-light border me-2">Manage Categories</a>
+        <a href="{{ url_for('expenses_bp.submit_expense') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Submit Expense</a>
     </div>
 </div>
 
@@ -46,9 +46,9 @@
                         {% if current_user.role.name in ['Admin', 'Project Manager', 'Accountant'] %}
                         <td class="px-4 py-3 text-end">
                             {% if expense.status == 'Pending' %}
-                                <a href="{{ url_for('expenses_bp.review', expense_id=expense.id) }}" class="btn btn-sm btn-outline-primary">Review</a>
+                                <a href="{{ url_for('expenses_bp.review_expense', expense_id=expense.id) }}" class="btn btn-sm btn-outline-primary">Review</a>
                             {% else %}
-                                <a href="{{ url_for('expenses_bp.review', expense_id=expense.id) }}" class="btn btn-sm btn-light">View</a>
+                                <a href="{{ url_for('expenses_bp.review_expense', expense_id=expense.id) }}" class="btn btn-sm btn-light">View</a>
                             {% endif %}
                         </td>
                         {% endif %}
