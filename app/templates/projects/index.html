@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold">Projects</h2>
-    {% if current_user.role.name in ['Admin', 'Project Manager'] %}
+    {% if current_user.role.name == 'Admin' %}
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createProjectModal">
         <i class="bi bi-plus-lg me-1"></i> New Project
     </button>

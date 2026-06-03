@@ -30,6 +30,10 @@ def create_project():
     form.project_manager_id.choices = [('', 'Select Manager')] + [(e.id, e.full_name) for e in project_managers]
 
     if form.validate_on_submit():
+        if current_user.role.name != 'Admin':
+            flash('Only Admins can create new projects.', 'danger')
+            return redirect(url_for('projects_bp.create_project'))
+            
         project = Project(
             company_id=current_user.company_id,
             client_id=form.client_id.data,
@@ -53,6 +57,12 @@ def create_project():
             EmployeeProject.employee_id == emp_id,
             EmployeeProject.removed_at == None
         ).all()
+    elif current_user.role.name == 'Project Manager':
+        emp_id = current_user.employee.id if current_user.employee else None
+        projects = Project.query.filter_by(
+            company_id=current_user.company_id,
+            project_manager_id=emp_id
+        ).all()
     else:
         projects = Project.query.filter_by(company_id=current_user.company_id).all()
     return render_template('projects/index.html', projects=projects, form=form)
@@ -61,6 +71,24 @@ def create_project():
 @login_required
 def view_project(project_id):
     project = Project.query.filter_by(id=project_id, company_id=current_user.company_id).first_or_404()
+    
+    if current_user.role.name == 'Project Manager':
+        emp_id = current_user.employee.id if current_user.employee else None
+        if project.project_manager_id != emp_id:
+            flash('Unauthorized access', 'danger')
+            return redirect(url_for('projects_bp.create_project'))
+            
+    elif current_user.role.name == 'Employee':
+        emp_id = current_user.employee.id if current_user.employee else None
+        is_assigned = EmployeeProject.query.filter_by(
+            project_id=project.id, 
+            employee_id=emp_id, 
+            removed_at=None
+        ).first()
+        if not is_assigned:
+            flash('Unauthorized access', 'danger')
+            return redirect(url_for('projects_bp.create_project'))
+
     assign_form = AssignEmployeeForm()
     employees = Employee.query.join(User).join(Role).filter(
         Employee.company_id == current_user.company_id,

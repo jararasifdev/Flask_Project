@@ -11,7 +11,10 @@ employees_bp = Blueprint('employees_bp', __name__)
 @login_required
 @role_required('Admin')
 def list_employees():
-    employees = Employee.query.filter_by(company_id=current_user.company_id).all()
+    employees = Employee.query.join(User).join(Role).filter(
+        Employee.company_id == current_user.company_id,
+        Role.name != 'Admin'
+    ).all()
     return render_template('employees/list.html', employees=employees, title="Manage Employees")
 
 @employees_bp.route('/employees/create', methods=['GET', 'POST'])
