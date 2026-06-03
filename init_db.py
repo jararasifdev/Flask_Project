@@ -5,9 +5,6 @@ app = create_app()
 
 def init_db():
     with app.app_context():
-        print("Creating database tables...")
-        db.create_all()
-        
         print("Populating roles...")
         roles = [
             {'name': 'Admin', 'description': 'Full system management'},
