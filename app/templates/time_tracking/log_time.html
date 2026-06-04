@@ -26,19 +26,17 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             {{ form.start_time.label(class="form-label fw-semibold") }}
-                            {{ form.start_time(class="form-control", type="time") }}
-                            <small class="text-muted">Optional</small>
+                            {{ form.start_time(class="form-control", type="time", id="start_time") }}
                         </div>
                         <div class="col-md-6">
                             {{ form.end_time.label(class="form-label fw-semibold") }}
-                            {{ form.end_time(class="form-control", type="time") }}
-                            <small class="text-muted">Optional</small>
+                            {{ form.end_time(class="form-control", type="time", id="end_time") }}
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        {{ form.total_hours.label(class="form-label fw-semibold") }}
-                        {{ form.total_hours(class="form-control", placeholder="e.g. 4.5") }}
+                        <label class="form-label fw-semibold">Calculated Total Hours</label>
+                        <input type="text" class="form-control bg-light" id="display_total_hours" value="0.0 hours" readonly>
                     </div>
                     
                     <div class="mb-3 form-check">
@@ -60,4 +58,50 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startTimeInput = document.getElementById('start_time');
+    const endTimeInput = document.getElementById('end_time');
+    const displayTotalHours = document.getElementById('display_total_hours');
+
+    function calculateTotalHours() {
+        if (startTimeInput.value && endTimeInput.value) {
+            const startStr = startTimeInput.value;
+            const endStr = endTimeInput.value;
+            
+            const startParts = startStr.split(':');
+            const endParts = endStr.split(':');
+            
+            const startDate = new Date();
+            startDate.setHours(parseInt(startParts[0], 10), parseInt(startParts[1], 10), 0, 0);
+            
+            const endDate = new Date();
+            endDate.setHours(parseInt(endParts[0], 10), parseInt(endParts[1], 10), 0, 0);
+            
+            let diffMs = endDate - startDate;
+            
+            if (diffMs < 0) {
+                displayTotalHours.value = "Invalid (End time is before Start time)";
+                displayTotalHours.classList.add("text-danger");
+                displayTotalHours.classList.replace("bg-light", "bg-danger-subtle");
+            } else {
+                let diffHours = diffMs / (1000 * 60 * 60);
+                displayTotalHours.value = diffHours.toFixed(2) + " hours";
+                displayTotalHours.classList.remove("text-danger");
+                displayTotalHours.classList.replace("bg-danger-subtle", "bg-light");
+            }
+        } else {
+            displayTotalHours.value = "0.0 hours";
+            displayTotalHours.classList.remove("text-danger");
+            displayTotalHours.classList.replace("bg-danger-subtle", "bg-light");
+        }
+    }
+
+    startTimeInput.addEventListener('change', calculateTotalHours);
+    endTimeInput.addEventListener('change', calculateTotalHours);
+});
+</script>
 {% endblock %}
