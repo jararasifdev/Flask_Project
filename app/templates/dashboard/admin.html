@@ -12,7 +12,8 @@
             <div class="card-body p-4 d-flex justify-content-between align-items-center">
                 <div>
                     <h3 class="fw-bold">Welcome back, {{ current_user.employee.full_name }}!</h3>
-                    <p class="mb-0 text-white-50">Manage your company settings, employees, and view overall analytics.</p>
+                    <p class="mb-0 text-white-50">Manage your company settings, employees, and view overall analytics.
+                    </p>
                 </div>
                 <div>
                     <!-- Quick actions can go here if needed later -->
@@ -85,7 +86,7 @@
                         <i class="bi bi-file-earmark-text fs-4"></i>
                     </div>
                 </div>
-                <a href="{{ url_for('invoices_bp.list_invoices') }}" class="stretched-link"></a>
+                <a href="{{ url_for('dashboard_bp.dashboard') }}" class="stretched-link"></a>
             </div>
         </div>
     </div>
@@ -103,7 +104,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Chart 2: Expenses by Category -->
     <div class="col-md-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
@@ -134,101 +135,101 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Project Status Chart
-    const ctxProject = document.getElementById('projectStatusChart').getContext('2d');
-    const projectLabels = JSON.parse('{{ charts.projects_status.labels | tojson | safe }}');
-    const projectData = JSON.parse('{{ charts.projects_status.data | tojson | safe }}');
-    
-    if (projectLabels.length > 0) {
-        new Chart(ctxProject, {
-            type: 'doughnut',
-            data: {
-                labels: projectLabels,
-                datasets: [{
-                    data: projectData,
-                    backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#64748b'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
-            }
-        });
-    } else {
-        document.getElementById('projectStatusChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No project data available.</p>';
-    }
+    document.addEventListener('DOMContentLoaded', function () {
+        // Project Status Chart
+        const ctxProject = document.getElementById('projectStatusChart').getContext('2d');
+        const projectLabels = JSON.parse('{{ charts.projects_status.labels | tojson | safe }}');
+        const projectData = JSON.parse('{{ charts.projects_status.data | tojson | safe }}');
 
-    // Expenses Category Chart
-    const ctxExpense = document.getElementById('expenseCategoryChart').getContext('2d');
-    const expenseLabels = JSON.parse('{{ charts.expenses_category.labels | tojson | safe }}');
-    const expenseData = JSON.parse('{{ charts.expenses_category.data | tojson | safe }}');
-    
-    if (expenseLabels.length > 0) {
-        new Chart(ctxExpense, {
-            type: 'bar',
-            data: {
-                labels: expenseLabels,
-                datasets: [{
-                    label: 'Amount ($)',
-                    data: expenseData,
-                    backgroundColor: '#6366f1',
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true }
+        if (projectLabels.length > 0) {
+            new Chart(ctxProject, {
+                type: 'doughnut',
+                data: {
+                    labels: projectLabels,
+                    datasets: [{
+                        data: projectData,
+                        backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#64748b'],
+                        borderWidth: 0
+                    }]
                 },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-    } else {
-        document.getElementById('expenseCategoryChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No approved expenses yet.</p>';
-    }
-
-    // Projects per Client Chart
-    const ctxClientProj = document.getElementById('clientProjectChart').getContext('2d');
-    const clientProjLabels = JSON.parse('{{ charts.projects_per_client.labels | tojson | safe }}');
-    const clientProjData = JSON.parse('{{ charts.projects_per_client.data | tojson | safe }}');
-    
-    if (clientProjLabels.length > 0) {
-        new Chart(ctxClientProj, {
-            type: 'bar',
-            data: {
-                labels: clientProjLabels,
-                datasets: [{
-                    label: 'Number of Projects',
-                    data: clientProjData,
-                    backgroundColor: '#10b981',
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { 
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 } 
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
                     }
-                },
-                plugins: {
-                    legend: { display: false }
                 }
-            }
-        });
-    } else {
-        document.getElementById('clientProjectChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No client data available.</p>';
-    }
-});
+            });
+        } else {
+            document.getElementById('projectStatusChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No project data available.</p>';
+        }
+
+        // Expenses Category Chart
+        const ctxExpense = document.getElementById('expenseCategoryChart').getContext('2d');
+        const expenseLabels = JSON.parse('{{ charts.expenses_category.labels | tojson | safe }}');
+        const expenseData = JSON.parse('{{ charts.expenses_category.data | tojson | safe }}');
+
+        if (expenseLabels.length > 0) {
+            new Chart(ctxExpense, {
+                type: 'bar',
+                data: {
+                    labels: expenseLabels,
+                    datasets: [{
+                        label: 'Amount ($)',
+                        data: expenseData,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('expenseCategoryChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No approved expenses yet.</p>';
+        }
+
+        // Projects per Client Chart
+        const ctxClientProj = document.getElementById('clientProjectChart').getContext('2d');
+        const clientProjLabels = JSON.parse('{{ charts.projects_per_client.labels | tojson | safe }}');
+        const clientProjData = JSON.parse('{{ charts.projects_per_client.data | tojson | safe }}');
+
+        if (clientProjLabels.length > 0) {
+            new Chart(ctxClientProj, {
+                type: 'bar',
+                data: {
+                    labels: clientProjLabels,
+                    datasets: [{
+                        label: 'Number of Projects',
+                        data: clientProjData,
+                        backgroundColor: '#10b981',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('clientProjectChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No client data available.</p>';
+        }
+    });
 </script>
 {% endblock %}
