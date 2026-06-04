@@ -2,7 +2,9 @@
 
 {% block content %}
 <div class="mb-4">
-    <a href="{{ url_for('time_tracking_bp.list_timesheets') }}" class="text-decoration-none text-muted mb-2 d-inline-block"><i class="bi bi-arrow-left me-1"></i> Back to Timesheets</a>
+    <a href="{{ url_for('time_tracking_bp.list_timesheets') }}"
+        class="text-decoration-none text-muted mb-2 d-inline-block"><i class="bi bi-arrow-left me-1"></i> Back to
+        Timesheets</a>
     <h2 class="fw-bold mb-0">Log Time</h2>
 </div>
 
@@ -12,17 +14,17 @@
             <div class="card-body p-4">
                 <form method="POST" action="">
                     {{ form.hidden_tag() }}
-                    
+
                     <div class="mb-3">
                         {{ form.project_id.label(class="form-label fw-semibold") }}
                         {{ form.project_id(class="form-select") }}
                     </div>
-                    
+
                     <div class="mb-3">
                         {{ form.work_date.label(class="form-label fw-semibold") }}
                         {{ form.work_date(class="form-control", type="date") }}
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-md-6">
                             {{ form.start_time.label(class="form-label fw-semibold") }}
@@ -33,24 +35,26 @@
                             {{ form.end_time(class="form-control", type="time", id="end_time") }}
                         </div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Calculated Total Hours</label>
-                        <input type="text" class="form-control bg-light" id="display_total_hours" value="0.0 hours" readonly>
+                        <input type="text" class="form-control bg-light" id="display_total_hours" value="0.0 hours"
+                            readonly>
                     </div>
-                    
+
                     <div class="mb-3 form-check">
                         {{ form.is_billable(class="form-check-input") }}
                         {{ form.is_billable.label(class="form-check-label fw-semibold") }}
                     </div>
-                    
+
                     <div class="mb-4">
                         {{ form.task_description.label(class="form-label fw-semibold") }}
                         {{ form.task_description(class="form-control", rows="3", placeholder="What did you work on?") }}
                     </div>
-                    
+
                     <div class="d-flex justify-content-end border-top pt-3">
-                        <a href="{{ url_for('time_tracking_bp.list_timesheets') }}" class="btn btn-light me-2">Cancel</a>
+                        <a href="{{ url_for('time_tracking_bp.list_timesheets') }}"
+                            class="btn btn-light me-2">Cancel</a>
                         {{ form.submit(class="btn btn-primary px-4 fw-semibold shadow-sm") }}
                     </div>
                 </form>
@@ -62,46 +66,48 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const startTimeInput = document.getElementById('start_time');
-    const endTimeInput = document.getElementById('end_time');
-    const displayTotalHours = document.getElementById('display_total_hours');
+    document.addEventListener('DOMContentLoaded', function () {
+        const startTimeInput = document.getElementById('start_time');
+        const endTimeInput = document.getElementById('end_time');
+        const displayTotalHours = document.getElementById('display_total_hours');
 
-    function calculateTotalHours() {
-        if (startTimeInput.value && endTimeInput.value) {
-            const startStr = startTimeInput.value;
-            const endStr = endTimeInput.value;
-            
-            const startParts = startStr.split(':');
-            const endParts = endStr.split(':');
-            
-            const startDate = new Date();
-            startDate.setHours(parseInt(startParts[0], 10), parseInt(startParts[1], 10), 0, 0);
-            
-            const endDate = new Date();
-            endDate.setHours(parseInt(endParts[0], 10), parseInt(endParts[1], 10), 0, 0);
-            
-            let diffMs = endDate - startDate;
-            
-            if (diffMs < 0) {
-                displayTotalHours.value = "Invalid (End time is before Start time)";
-                displayTotalHours.classList.add("text-danger");
-                displayTotalHours.classList.replace("bg-light", "bg-danger-subtle");
-            } else {
+        function calculateTotalHours() {
+            if (startTimeInput.value && endTimeInput.value) {
+                const startStr = startTimeInput.value;
+                const endStr = endTimeInput.value;
+
+                const startParts = startStr.split(':');
+                const endParts = endStr.split(':');
+
+                const startDate = new Date();
+                startDate.setHours(parseInt(startParts[0], 10), parseInt(startParts[1], 10), 0, 0);
+
+                const endDate = new Date();
+                endDate.setHours(parseInt(endParts[0], 10), parseInt(endParts[1], 10), 0, 0);
+
+                let diffMs = endDate - startDate;
+
+                if (diffMs < 0) {
+                    diffMs += 24 * 60 * 60 * 1000;
+                }
+
                 let diffHours = diffMs / (1000 * 60 * 60);
-                displayTotalHours.value = diffHours.toFixed(2) + " hours";
+                let hrs = Math.floor(diffMs / (1000 * 60 * 60));
+                let mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                let formattedMins = mins.toString().padStart(2, '0');
+
+                displayTotalHours.value = `${hrs}h ${formattedMins}m`;
+                displayTotalHours.classList.remove("text-danger");
+                displayTotalHours.classList.replace("bg-danger-subtle", "bg-light");
+            } else {
+                displayTotalHours.value = "0h 00m";
                 displayTotalHours.classList.remove("text-danger");
                 displayTotalHours.classList.replace("bg-danger-subtle", "bg-light");
             }
-        } else {
-            displayTotalHours.value = "0.0 hours";
-            displayTotalHours.classList.remove("text-danger");
-            displayTotalHours.classList.replace("bg-danger-subtle", "bg-light");
         }
-    }
 
-    startTimeInput.addEventListener('change', calculateTotalHours);
-    endTimeInput.addEventListener('change', calculateTotalHours);
-});
+        startTimeInput.addEventListener('change', calculateTotalHours);
+        endTimeInput.addEventListener('change', calculateTotalHours);
+    });
 </script>
 {% endblock %}

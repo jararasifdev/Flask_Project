@@ -5,7 +5,7 @@ from app.models import Timesheet, Project, Expense, ExpenseCategory, EmployeePro
 from app.forms import TimesheetForm, ReviewTimesheetForm
 from app.utils.decorators import role_required
 from app.utils.notifications import create_notification
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from app.expenses.routes import check_budget_threshold
 time_tracking_bp = Blueprint('time_tracking_bp', __name__)
 
@@ -54,8 +54,7 @@ def log_time():
         dt_end = datetime.combine(dummy_date, end)
         
         if dt_end <= dt_start:
-            flash('End time must be after start time.', 'danger')
-            return render_template('time_tracking/log_time.html', form=form, title='Log Time')
+            dt_end += timedelta(days=1)
             
         delta = dt_end - dt_start
         total_hours = delta.total_seconds() / 3600.0

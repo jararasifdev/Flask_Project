@@ -44,7 +44,11 @@
                                 <span class="badge bg-secondary" style="font-size: 0.65rem;">Non-Billable</span>
                             {% endif %}
                         </td>
-                        <td class="text-center fw-bold">{{ "%.2f"|format(ts.total_hours) }}</td>
+                        <td class="text-center fw-bold">
+                            {% set hrs = ts.total_hours | int %}
+                            {% set mins = ((ts.total_hours - hrs) * 60) | round | int %}
+                            {{ hrs }}h {{ "%02d" | format(mins) }}m
+                        </td>
                         <td>
                             {% if ts.status == 'Pending' %}
                                 <span class="badge bg-warning text-dark">Pending</span>
