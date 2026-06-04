@@ -34,6 +34,7 @@
                         <i class="bi bi-people fs-4"></i>
                     </div>
                 </div>
+                <a href="{{ url_for('employees_bp.list_employees') }}" class="stretched-link"></a>
             </div>
         </div>
     </div>
@@ -50,6 +51,7 @@
                         <i class="bi bi-briefcase fs-4"></i>
                     </div>
                 </div>
+                <a href="{{ url_for('projects_bp.create_project') }}" class="stretched-link"></a>
             </div>
         </div>
     </div>
@@ -66,6 +68,7 @@
                         <i class="bi bi-receipt fs-4"></i>
                     </div>
                 </div>
+                <a href="{{ url_for('expenses_bp.list_expenses') }}" class="stretched-link"></a>
             </div>
         </div>
     </div>
@@ -82,6 +85,7 @@
                         <i class="bi bi-file-earmark-text fs-4"></i>
                     </div>
                 </div>
+                <a href="{{ url_for('invoices_bp.list_invoices') }}" class="stretched-link"></a>
             </div>
         </div>
     </div>
@@ -143,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 labels: projectLabels,
                 datasets: [{
                     data: projectData,
-                    backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d'],
+                    backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#64748b'],
                     borderWidth: 0
                 }]
             },
@@ -172,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Amount ($)',
                     data: expenseData,
-                    backgroundColor: '#0d6efd',
+                    backgroundColor: '#6366f1',
                     borderRadius: 4
                 }]
             },
@@ -204,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Number of Projects',
                     data: clientProjData,
-                    backgroundColor: '#198754',
+                    backgroundColor: '#10b981',
                     borderRadius: 4
                 }]
             },
