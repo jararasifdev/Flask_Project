@@ -12,18 +12,41 @@ time_tracking_bp = Blueprint('time_tracking_bp', __name__)
 @time_tracking_bp.route('/timesheets')
 @login_required
 def list_timesheets():
+    status_filter = request.args.get('status')
+    project_filter = request.args.get('project_id')
+
+    query = Timesheet.query
+
     if current_user.role.name in ['Admin', 'Project Manager']:
         if current_user.role.name == 'Admin':
-            timesheets = Timesheet.query.filter_by(company_id=current_user.company_id).order_by(Timesheet.work_date.desc()).all()
+            query = query.filter_by(company_id=current_user.company_id)
+            projects = Project.query.filter_by(company_id=current_user.company_id).all()
         else:
-            timesheets = Timesheet.query.join(Project).filter(
+            query = query.join(Project).filter(
                 Project.company_id == current_user.company_id,
                 db.or_(Project.project_manager_id == current_user.employee.id, Timesheet.employee_id == current_user.employee.id)
-            ).order_by(Timesheet.work_date.desc()).all()
+            )
+            projects = Project.query.filter(
+                Project.company_id == current_user.company_id,
+                Project.project_manager_id == current_user.employee.id
+            ).all()
     else:
-        timesheets = Timesheet.query.filter_by(employee_id=current_user.employee.id).order_by(Timesheet.work_date.desc()).all()
+        query = query.filter_by(employee_id=current_user.employee.id)
+        emp_id = current_user.employee.id if current_user.employee else None
+        projects = Project.query.join(EmployeeProject).filter(
+            Project.company_id == current_user.company_id,
+            EmployeeProject.employee_id == emp_id,
+            EmployeeProject.removed_at == None
+        ).all()
         
-    return render_template('time_tracking/index.html', timesheets=timesheets, title='Time Tracking')
+    if status_filter:
+        query = query.filter(Timesheet.status == status_filter)
+    if project_filter:
+        query = query.filter(Timesheet.project_id == project_filter)
+        
+    timesheets = query.order_by(Timesheet.work_date.desc()).all()
+        
+    return render_template('time_tracking/index.html', timesheets=timesheets, projects=projects, current_status=status_filter, current_project=project_filter, title='Time Tracking')
 
 @time_tracking_bp.route('/timesheets/log', methods=['GET', 'POST'])
 @login_required

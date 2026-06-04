@@ -3,8 +3,11 @@ from werkzeug.utils import secure_filename
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app import db
-from app.models.project import Project
+from datetime import datetime
+from app.models.project import Project, EmployeeProject
 from app.models.expense import Expense, ExpenseCategory, BudgetAlert
+from app.models.project import EmployeeProject
+from app.utils.notifications import create_notification
 from app.forms.expense_forms import ExpenseForm, ExpenseReviewForm, ExpenseCategoryForm
 from app.utils.decorators import role_required
 
@@ -31,16 +34,54 @@ def check_budget_threshold(project):
                 message=f'Project has reached {percentage:.1f}% of its budget.'
             )
             db.session.add(alert)
+        if percentage >= 100 or percentage >= 80:
+            if project.project_manager_id and project.project_manager:
+                create_notification(
+                    company_id=project.company_id,
+                    user_id=project.manager.user_id,
+                    type_name='Budget Alert',
+                    title='Budget Exceeded' if percentage >= 100 else 'Budget Warning',
+                    message=f'Project {project.name} budget status: {percentage:.1f}%'
+                )
 
 @expenses_bp.route('/', methods=['GET'])
 @login_required
 def list_expenses():
+    status_filter = request.args.get('status')
+    project_filter = request.args.get('project_id')
+
+    query = Expense.query
+
     if current_user.role.name == 'Employee':
         emp_id = current_user.employee.id if current_user.employee else None
-        expenses = Expense.query.filter_by(company_id=current_user.company_id, employee_id=emp_id).all()
+        query = query.filter_by(company_id=current_user.company_id, employee_id=emp_id)
+        projects = Project.query.join(EmployeeProject).filter(
+            Project.company_id == current_user.company_id,
+            EmployeeProject.employee_id == emp_id,
+            EmployeeProject.removed_at == None
+        ).all()
+    elif current_user.role.name == 'Project Manager':
+        emp_id = current_user.employee.id if current_user.employee else None
+        query = query.join(Project).filter(
+            Expense.company_id == current_user.company_id,
+            db.or_(Expense.employee_id == emp_id, Project.project_manager_id == emp_id)
+        )
+        projects = Project.query.filter(
+            Project.company_id == current_user.company_id,
+            Project.project_manager_id == emp_id
+        ).all()
     else:
-        expenses = Expense.query.filter_by(company_id=current_user.company_id).all()
-    return render_template('expenses/index.html', expenses=expenses)
+        query = query.filter_by(company_id=current_user.company_id)
+        projects = Project.query.filter_by(company_id=current_user.company_id).all()
+
+    if status_filter:
+        query = query.filter(Expense.status == status_filter)
+    if project_filter:
+        query = query.filter(Expense.project_id == project_filter)
+
+    expenses = query.order_by(Expense.submitted_at.desc()).all()
+
+    return render_template('expenses/index.html', expenses=expenses, projects=projects, current_status=status_filter, current_project=project_filter, title='Expenses')
 
 @expenses_bp.route('/submit', methods=['GET', 'POST'])
 @login_required
@@ -49,11 +90,18 @@ def submit_expense():
     
     if current_user.role.name == 'Employee':
         emp_id = current_user.employee.id if current_user.employee else None
-        from app.models.project import EmployeeProject
         projects = Project.query.join(EmployeeProject).filter(
             Project.company_id == current_user.company_id,
             EmployeeProject.employee_id == emp_id,
             EmployeeProject.removed_at == None
+        ).all()
+    elif current_user.role.name == 'Project Manager':
+        emp_id = current_user.employee.id if current_user.employee else None
+        projects = Project.query.outerjoin(EmployeeProject, 
+            db.and_(EmployeeProject.project_id == Project.id, EmployeeProject.removed_at == None)
+        ).filter(
+            Project.company_id == current_user.company_id,
+            db.or_(EmployeeProject.employee_id == emp_id, Project.project_manager_id == emp_id)
         ).all()
     else:
         projects = Project.query.filter_by(company_id=current_user.company_id).all()
@@ -99,16 +147,34 @@ def submit_expense():
 def review_expense(expense_id):
 
     expense = Expense.query.filter_by(id=expense_id, company_id=current_user.company_id).first_or_404()
+    
+    if current_user.role.name == 'Project Manager':
+        emp_id = current_user.employee.id if current_user.employee else None
+        if expense.project.project_manager_id != emp_id:
+            flash('Unauthorized to review this expense.', 'danger')
+            return redirect(url_for('expenses_bp.list_expenses'))
+            
     form = ExpenseReviewForm()
 
     if form.validate_on_submit():
         expense.status = form.status.data
         expense.approved_by_employee_id = current_user.employee.id if current_user.employee else None
+        expense.approved_at = datetime.utcnow()
         
         db.session.commit()
         
         if expense.status == 'Approved':
             check_budget_threshold(expense.project)
+            db.session.commit()
+        
+        if expense.employee and expense.employee.user_id:
+            create_notification(
+                company_id=current_user.company_id,
+                user_id=expense.employee.user_id,
+                type_name='Expense Update',
+                title=f'Expense {expense.status}',
+                message=f'Your expense of ${expense.amount} for project {expense.project.name} has been {expense.status.lower()}.'
+            )
             db.session.commit()
             
         flash(f'Expense {expense.status.lower()} successfully.', 'success')

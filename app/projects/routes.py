@@ -50,22 +50,30 @@ def create_project():
         flash('Project created successfully!', 'success')
         return redirect(url_for('projects_bp.create_project'))
 
+    status_filter = request.args.get('status')
+
     if current_user.role.name == 'Employee':
         emp_id = current_user.employee.id if current_user.employee else None
-        projects = Project.query.join(EmployeeProject).filter(
+        query = Project.query.join(EmployeeProject).filter(
             Project.company_id == current_user.company_id,
             EmployeeProject.employee_id == emp_id,
             EmployeeProject.removed_at == None
-        ).all()
+        )
     elif current_user.role.name == 'Project Manager':
         emp_id = current_user.employee.id if current_user.employee else None
-        projects = Project.query.filter_by(
-            company_id=current_user.company_id,
-            project_manager_id=emp_id
-        ).all()
+        query = Project.query.outerjoin(EmployeeProject).filter(
+            Project.company_id == current_user.company_id,
+            db.or_(Project.project_manager_id == emp_id, EmployeeProject.employee_id == emp_id)
+        )
     else:
-        projects = Project.query.filter_by(company_id=current_user.company_id).all()
-    return render_template('projects/index.html', projects=projects, form=form)
+        query = Project.query.filter_by(company_id=current_user.company_id)
+
+    if status_filter:
+        query = query.filter(Project.status == status_filter)
+
+    projects = query.all()
+
+    return render_template('projects/index.html', form=form, projects=projects, title='Projects', current_status=status_filter)
 
 @projects_bp.route('/<project_id>', methods=['GET'])
 @login_required
