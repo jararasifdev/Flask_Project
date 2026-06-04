@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, abort
 from flask_login import login_required, current_user
 from app import db
 from sqlalchemy import func
+from app.models import Client, Project, EmployeeProject, Expense, ExpenseCategory, Employee, Timesheet
+from datetime import datetime, timedelta
 
 dashboard_bp = Blueprint('dashboard_bp', __name__)
 
@@ -12,9 +14,7 @@ def dashboard():
     role_name = current_user.role.name
     company_id = current_user.company_id
 
-    from app.models.project import Project, EmployeeProject
-    from app.models.expense import Expense, ExpenseCategory
-    from app.models.employee import Employee
+
 
     stats = {}
     charts = {}
@@ -39,7 +39,6 @@ def dashboard():
             'data': [float(row[1]) for row in exp_cat_data]
         }
 
-        from app.models.client import Client
         clients_proj_data = db.session.query(Client.company_name, func.count(Project.id)).outerjoin(Project, Client.id == Project.client_id).filter(Client.company_id == company_id).group_by(Client.company_name).all()
         charts['projects_per_client'] = {
             'labels': [row[0] for row in clients_proj_data],
@@ -88,18 +87,54 @@ def dashboard():
         return render_template('dashboard/accountant.html', stats=stats, charts=charts)
 
     elif role_name == 'Employee':
+
         emp_id = current_user.employee.id if current_user.employee else None
+        
+        now = datetime.utcnow()
+        current_month = now.month
+        current_year = now.year
+        
+        logged_hours = db.session.query(func.sum(Timesheet.total_hours)).filter(
+            Timesheet.employee_id == emp_id,
+            db.extract('month', Timesheet.work_date) == current_month,
+            db.extract('year', Timesheet.work_date) == current_year,
+            Timesheet.status == 'Approved'
+        ).scalar() or 0
+        
         stats = {
             'assigned_projects': EmployeeProject.query.filter_by(employee_id=emp_id, removed_at=None).count() if emp_id else 0,
-            'pending_timesheets': 0, 
+            'pending_timesheets': Timesheet.query.filter_by(employee_id=emp_id, status='Pending').count() if emp_id else 0, 
             'submitted_expenses': Expense.query.filter_by(employee_id=emp_id).count() if emp_id else 0,
-            'next_payroll': 'N/A' 
+            'logged_hours_this_month': f"{logged_hours:.1f}" 
         }
 
         my_exp_status = db.session.query(Expense.status, func.count(Expense.id)).filter_by(employee_id=emp_id).group_by(Expense.status).all()
         charts['my_expenses_status'] = {
             'labels': [row[0] for row in my_exp_status],
             'data': [row[1] for row in my_exp_status]
+        }
+        
+        today = now.date()
+        week_dates = [today - timedelta(days=i) for i in range(6, -1, -1)]
+        labels = [d.strftime('%a') for d in week_dates]
+        data = [0] * 7
+        
+        recent_timesheets = Timesheet.query.filter(
+            Timesheet.employee_id == emp_id,
+            Timesheet.work_date >= week_dates[0],
+            Timesheet.work_date <= today,
+            Timesheet.status != 'Rejected'
+        ).all()
+        
+        for ts in recent_timesheets:
+            for i, d in enumerate(week_dates):
+                if ts.work_date == d:
+                    data[i] += float(ts.total_hours)
+                    break
+                    
+        charts['weekly_hours'] = {
+            'labels': labels,
+            'data': data
         }
 
         return render_template('dashboard/employee.html', stats=stats, charts=charts)

@@ -89,19 +89,23 @@ def view_project(project_id):
             flash('Unauthorized access', 'danger')
             return redirect(url_for('projects_bp.create_project'))
 
-    assign_form = AssignEmployeeForm()
-    employees = Employee.query.join(User).join(Role).filter(
-        Employee.company_id == current_user.company_id,
-        Role.name == 'Employee'
-    ).all()
-    assign_form.employee_id.choices = [(e.id, e.full_name) for e in employees]
-    
-    total_expenses = sum(exp.amount for exp in project.expenses if exp.status == 'Approved')
-    
     active_employees = Employee.query.join(EmployeeProject).filter(
         EmployeeProject.project_id == project.id,
         EmployeeProject.removed_at == None
     ).all()
+    
+    assign_form = AssignEmployeeForm()
+    assigned_ids = [e.id for e in active_employees]
+    query = Employee.query.join(User).join(Role).filter(
+        Employee.company_id == current_user.company_id,
+        Role.name == 'Employee'
+    )
+    if assigned_ids:
+        query = query.filter(~Employee.id.in_(assigned_ids))
+    employees = query.all()
+    assign_form.employee_id.choices = [(e.id, e.full_name) for e in employees]
+    
+    total_expenses = sum(exp.amount for exp in project.expenses if exp.status == 'Approved')
     
     return render_template('projects/view.html', project=project, assign_form=assign_form, total_expenses=total_expenses, active_employees=active_employees)
 
@@ -115,10 +119,14 @@ def assign_project(project_id):
         return redirect(url_for('projects_bp.view_project', project_id=project.id))
 
     assign_form = AssignEmployeeForm()
-    employees = Employee.query.join(User).join(Role).filter(
+    assigned_ids = [a.employee_id for a in EmployeeProject.query.filter_by(project_id=project.id, removed_at=None).all()]
+    query = Employee.query.join(User).join(Role).filter(
         Employee.company_id == current_user.company_id,
         Role.name == 'Employee'
-    ).all()
+    )
+    if assigned_ids:
+        query = query.filter(~Employee.id.in_(assigned_ids))
+    employees = query.all()
     assign_form.employee_id.choices = [(e.id, e.full_name) for e in employees]
 
     if assign_form.validate_on_submit():
