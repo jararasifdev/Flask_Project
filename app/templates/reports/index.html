@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-4">
+    <h2 class="fw-bold mb-0">Financial Reports</h2>
+    <p class="text-muted mb-0">Interactive overview of company finances</p>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Top Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card border-0 shadow-sm bg-primary text-white h-100">
+            <div class="card-body">
+                <h6 class="text-white-50 text-uppercase fw-bold mb-2">Total Income</h6>
+                <h3 class="fw-bold mb-0">${{ "%.2f"|format(total_income) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card border-0 shadow-sm bg-danger text-white h-100">
+            <div class="card-body">
+                <h6 class="text-white-50 text-uppercase fw-bold mb-2">Total Costs</h6>
+                <h3 class="fw-bold mb-0">${{ "%.2f"|format(total_costs) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Profit & Loss Overview -->
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Profit & Loss Overview</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="pnlChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Project Budget vs Actual -->
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Project Budget vs. Expenses</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="budgetChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Employee Costs -->
+    <div class="col-lg-12 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Employee Total Costs (Salary + Expenses)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="employeeCostsChart" style="max-height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Profit & Loss Chart
+    const pnlCtx = document.getElementById('pnlChart').getContext('2d');
+    new Chart(pnlCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Total Income', 'Total Costs'],
+            datasets: [{
+                data: [{{ total_income }}, {{ total_costs }}],
+                backgroundColor: ['#0d6efd', '#dc3545'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // 2. Project Budget vs Actual Chart
+    const budgetCtx = document.getElementById('budgetChart').getContext('2d');
+    new Chart(budgetCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ project_names|tojson }},
+            datasets: [
+                {
+                    label: 'Allocated Budget ($)',
+                    data: {{ project_budgets|tojson }},
+                    backgroundColor: '#e9ecef',
+                    borderColor: '#adb5bd',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Actual Expenses ($)',
+                    data: {{ project_expenses|tojson }},
+                    backgroundColor: '#0dcaf0',
+                    borderColor: '#0info',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+    
+    // 3. Employee Costs Chart
+    const empCtx = document.getElementById('employeeCostsChart').getContext('2d');
+    new Chart(empCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ employee_names|tojson }},
+            datasets: [{
+                label: 'Total Cost (Salary + Expenses) ($)',
+                data: {{ employee_costs|tojson }},
+                backgroundColor: '#6f42c1',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

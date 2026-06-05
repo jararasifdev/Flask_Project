@@ -62,7 +62,7 @@
                     {% if current_user.role.name == 'Admin' %}
                     <li class="nav-item">
                         <a class="nav-link text-dark fw-semibold px-3 py-2 rounded sidebar-link"
-                            href="{{ url_for('clients_bp.add_client') }}">
+                            href="{{ url_for('clients_bp.list_clients') }}">
                             <i class="bi bi-person-lines-fill me-2 text-muted"></i> Clients
                         </a>
                     </li>
@@ -88,7 +88,7 @@
                     {% if current_user.role.name in ['Admin', 'Accountant', 'Project Manager'] %}
                     <li class="nav-item">
                         <a class="nav-link text-dark fw-semibold px-3 py-2 rounded sidebar-link"
-                            href="{{ url_for('dashboard_bp.dashboard') }}">
+                            href="{{ url_for('invoices_bp.list_invoices') }}">
                             <i class="bi bi-file-earmark-text-fill me-2 text-muted"></i> Invoices
                         </a>
                     </li>
@@ -108,7 +108,7 @@
                     {% endif %}
                     <li class="nav-item">
                         <a class="nav-link text-dark fw-semibold px-3 py-2 rounded sidebar-link"
-                            href="{{ url_for('dashboard_bp.dashboard') }}">
+                            href="{{ url_for('reports_bp.dashboard') }}">
                             <i class="bi bi-graph-up me-2 text-muted"></i> Reports
                         </a>
                     </li>
