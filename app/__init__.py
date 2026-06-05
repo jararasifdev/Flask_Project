@@ -1,4 +1,5 @@
-from flask import Flask
+from flask import Flask, request, g
+import time
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
@@ -44,5 +45,26 @@ def create_app(config_class=Config):
     app.register_blueprint(reports_bp)
     app.register_blueprint(time_tracking_bp)
     app.register_blueprint(notifications_bp)
+
+    @app.before_request
+    def before_request():
+        g.start = time.time()
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        print(f"[{time.strftime('%H:%M:%S')}] ---> START {request.method} {request.path} (IP: {ip})")
+
+        if request.args:
+            print(f"  | Args: {dict(request.args)}")
+        if request.form:
+            safe_form = {k: ('***' if 'password' in k.lower() else v) for k, v in request.form.items()}
+            print(f"  | Form: {safe_form}")
+        if request.is_json:
+            print(f"  | JSON: {request.get_json(silent=True)}")
+
+    @app.after_request
+    def after_request(response):
+        if hasattr(g, 'start'):
+            duration = time.time() - g.start
+            print(f"[{time.strftime('%H:%M:%S')}] <--- END {request.method} {request.path} | Status: {response.status_code} | Time: {duration:.4f}s")
+        return response
 
     return app
