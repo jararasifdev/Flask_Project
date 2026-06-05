@@ -28,6 +28,8 @@ def create_app(config_class=Config):
     from app.clients.routes import clients_bp
     from app.projects.routes import projects_bp
     from app.expenses.routes import expenses_bp
+    from app.invoices.routes import invoices_bp
+    from app.reports.routes import reports_bp
     from app.time_tracking.routes import time_tracking_bp
     from app.notifications.routes import notifications_bp
 
@@ -38,6 +40,8 @@ def create_app(config_class=Config):
     app.register_blueprint(clients_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(expenses_bp)
+    app.register_blueprint(invoices_bp)
+    app.register_blueprint(reports_bp)
     app.register_blueprint(time_tracking_bp)
     app.register_blueprint(notifications_bp)
 
