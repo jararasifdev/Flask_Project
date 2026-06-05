@@ -20,6 +20,15 @@ def list_departments():
 def create_department():
     form = DepartmentForm()
     if form.validate_on_submit():
+        existing_dept = Department.query.filter(
+            Department.company_id == current_user.company_id,
+            db.func.lower(Department.name) == form.name.data.lower()
+        ).first()
+
+        if existing_dept:
+            flash(f"A department named '{form.name.data}' already exists.", 'danger')
+            return render_template('departments/create.html', form=form, title="Create Department")
+
         dept = Department(
             company_id=current_user.company_id,
             name=form.name.data,
@@ -47,6 +56,16 @@ def view_department(department_id):
     assign_form.employee_id.choices = [(e.id, e.full_name) for e in employees]
     
     if form.validate_on_submit():
+        existing_dept = Department.query.filter(
+            Department.id != department.id,
+            Department.company_id == current_user.company_id,
+            db.func.lower(Department.name) == form.name.data.lower()
+        ).first()
+        
+        if existing_dept:
+            flash(f"Another department named '{form.name.data}' already exists.", 'danger')
+            return render_template('departments/view.html', form=form, assign_form=assign_form, department=department, title="Manage Department")
+
         department.name = form.name.data
         department.description = form.description.data
         db.session.commit()

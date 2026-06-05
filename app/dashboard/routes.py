@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, abort
 from flask_login import login_required, current_user
 from app import db
 from sqlalchemy import func
-from app.models import Client, Project, EmployeeProject, Expense, ExpenseCategory, Employee, Timesheet
+from app.models import Client, Project, EmployeeProject, Expense, ExpenseCategory, Employee, Timesheet, User, Role
 from datetime import datetime, timedelta
 
 dashboard_bp = Blueprint('dashboard_bp', __name__)
@@ -21,7 +21,7 @@ def dashboard():
 
     if role_name == 'Admin':
         stats = {
-            'total_employees': Employee.query.filter_by(company_id=company_id).count(),
+            'total_employees': Employee.query.join(User).join(Role).filter(Employee.company_id==company_id, Role.name != 'Admin').count(),
             'total_projects': Project.query.filter_by(company_id=company_id).count(),
             'pending_expenses': Expense.query.filter_by(company_id=company_id, status='Pending').count(),
             'invoices_due': 0 

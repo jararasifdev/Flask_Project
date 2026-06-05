@@ -11,11 +11,23 @@ employees_bp = Blueprint('employees_bp', __name__)
 @login_required
 @role_required('Admin')
 def list_employees():
-    employees = Employee.query.join(User).join(Role).filter(
+    search_query = request.args.get('search', '').strip()
+    
+    query = Employee.query.join(User).join(Role).filter(
         Employee.company_id == current_user.company_id,
         Role.name != 'Admin'
-    ).all()
-    return render_template('employees/list.html', employees=employees, title="Manage Employees")
+    )
+    
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Employee.full_name.ilike(f'%{search_query}%'),
+                User.email.ilike(f'%{search_query}%')
+            )
+        )
+        
+    employees = query.all()
+    return render_template('employees/list.html', employees=employees, search_query=search_query, title="Manage Employees")
 
 @employees_bp.route('/employees/create', methods=['GET', 'POST'])
 @login_required
