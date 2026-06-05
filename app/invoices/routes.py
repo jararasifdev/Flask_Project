@@ -40,6 +40,15 @@ def create_invoice():
     form.project_id.choices = [('', 'Select Project (Optional)')] + [(p.id, p.name) for p in projects]
     
     if form.validate_on_submit():
+        existing_invoice = Invoice.query.filter_by(
+            company_id=current_user.company_id,
+            invoice_number=form.invoice_number.data
+        ).first()
+
+        if existing_invoice:
+            flash(f"Invoice number '{form.invoice_number.data}' already exists. Please enter a different invoice number.", 'danger')
+            return render_template('invoices/create.html', form=form, title='Create Invoice')
+
         invoice = Invoice(
             company_id=current_user.company_id,
             client_id=form.client_id.data,
@@ -164,3 +173,13 @@ def add_payment(invoice_id):
         db.session.commit()
         flash('Payment recorded successfully.', 'success')
     return redirect(url_for('invoices_bp.view_invoice', invoice_id=invoice.id))
+
+@invoices_bp.route('/invoices/<invoice_id>/delete', methods=['POST'])
+@login_required
+@role_required('Admin', 'Accountant')
+def delete_invoice(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id, company_id=current_user.company_id).first_or_404()
+    db.session.delete(invoice)
+    db.session.commit()
+    flash('Invoice deleted successfully.', 'success')
+    return redirect(url_for('invoices_bp.list_invoices'))
