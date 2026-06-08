@@ -85,7 +85,7 @@
                             <i class="bi bi-receipt me-2 text-muted"></i> Expenses
                         </a>
                     </li>
-                    {% if current_user.role.name in ['Admin', 'Accountant', 'Project Manager'] %}
+                    {% if current_user.role.name in ['Admin', 'Accountant'] %}
                     <li class="nav-item">
                         <a class="nav-link text-dark fw-semibold px-3 py-2 rounded sidebar-link"
                             href="{{ url_for('invoices_bp.list_invoices') }}">
@@ -101,7 +101,7 @@
                     {% if current_user.role.name in ['Admin', 'Accountant'] %}
                     <li class="nav-item">
                         <a class="nav-link text-dark fw-semibold px-3 py-2 rounded sidebar-link"
-                            href="{{ url_for('dashboard_bp.dashboard') }}">
+                            href="{{ url_for('payroll_bp.list_runs') }}">
                             <i class="bi bi-cash-stack me-2 text-muted"></i> Payroll
                         </a>
                     </li>
@@ -211,6 +211,30 @@
     </div> <!-- End Public Container -->
     {% endif %}
 
+    <!-- Notification Detail Modal -->
+    <div class="modal fade" id="notificationDetailModal" tabindex="-1" aria-labelledby="notificationDetailModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="notificationDetailModalLabel">Notification Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-primary-light text-primary" id="notifDetailType"></span>
+                        <small class="text-muted" id="notifDetailDate"></small>
+                    </div>
+                    <h6 class="fw-bold mb-2" id="notifDetailTitle"></h6>
+                    <p class="mb-0 text-dark" id="notifDetailMessage" style="white-space: pre-wrap;"></p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js -->
@@ -232,24 +256,44 @@
                                 <span class="fw-bold">Notifications (${data.count})</span>
                                 <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="markAllRead(event)">Mark all read</button>
                             </li>`;
+                        window.notificationData = window.notificationData || {};
                         data.notifications.forEach(n => {
+                            window.notificationData[n.id] = n;
                             list.innerHTML += `
                                 <li>
-                                    <div class="dropdown-item py-2 text-wrap" style="white-space: normal;">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="dropdown-item py-2 text-wrap position-relative notification-item" style="white-space: normal; cursor: pointer;" onclick="viewNotification('${n.id}')">
+                                        <button class="btn btn-link p-0 position-absolute top-0 end-0 mt-1 me-2 text-muted" onclick="markRead(event, '${n.id}')">
+                                            <i class="bi bi-x fs-5"></i>
+                                        </button>
+                                        <div class="d-flex justify-content-between align-items-center mb-1 pe-4">
                                             <small class="text-primary fw-semibold">${n.type}</small>
                                             <small class="text-muted" style="font-size: 0.7rem;">${n.created_at}</small>
                                         </div>
-                                        <p class="mb-0 fw-semibold fs-7">${n.title}</p>
-                                        <small class="text-muted fs-7 d-block mt-1">${n.message || ''}</small>
+                                        <p class="mb-0 fw-semibold fs-7 pe-4">${n.title}</p>
+                                        <small class="text-muted fs-7 d-block mt-1 pe-4 text-truncate">${n.message || ''}</small>
                                     </div>
                                 </li>
                                 <li><hr class="dropdown-divider my-0"></li>
                             `;
                         });
+                        list.innerHTML += `
+                            <li>
+                                <a href="{{ url_for('notifications_bp.list_notifications') }}" class="dropdown-item text-center text-primary py-2 fw-semibold" style="font-size: 0.85rem;">
+                                    View All Notifications
+                                </a>
+                            </li>
+                        `;
                     } else {
                         badge.classList.add('d-none');
-                        list.innerHTML = `<li class="text-center py-4 text-muted"><i class="bi bi-bell-slash fs-4 d-block mb-2"></i><small>No new notifications</small></li>`;
+                        list.innerHTML = `
+                            <li class="text-center py-4 text-muted"><i class="bi bi-bell-slash fs-4 d-block mb-2"></i><small>No new notifications</small></li>
+                            <li><hr class="dropdown-divider my-0"></li>
+                            <li>
+                                <a href="{{ url_for('notifications_bp.list_notifications') }}" class="dropdown-item text-center text-primary py-2 fw-semibold" style="font-size: 0.85rem;">
+                                    View All Notifications
+                                </a>
+                            </li>
+                        `;
                     }
                 });
         }
@@ -267,6 +311,30 @@
                         setTimeout(loadNotifications, 200); // Reload after brief delay
                     });
             }
+        }
+
+        function markRead(event, id) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            fetch('/api/notifications/' + id + '/read', { method: 'POST' })
+                .then(() => {
+                    loadNotifications();
+                });
+        }
+
+        function viewNotification(id) {
+            const n = window.notificationData[id];
+            if (!n) return;
+            document.getElementById('notifDetailTitle').innerText = n.title;
+            document.getElementById('notifDetailMessage').innerText = n.message || '';
+            document.getElementById('notifDetailType').innerText = n.type;
+            document.getElementById('notifDetailDate').innerText = n.created_at;
+            const notifModal = new bootstrap.Modal(document.getElementById('notificationDetailModal'));
+            notifModal.show();
+            // Mark as read when viewed
+            markRead(null, id);
         }
 
         document.addEventListener('DOMContentLoaded', loadNotifications);
