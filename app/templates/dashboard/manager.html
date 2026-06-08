@@ -89,13 +89,35 @@
 
 <div class="row">
     <!-- Chart 1: Managed Projects Status -->
-    <div class="col-md-8 mb-4 mx-auto">
+    <div class="col-md-4 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                 <h5 class="fw-bold mb-0">My Projects Status</h5>
             </div>
             <div class="card-body">
                 <canvas id="projectStatusChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Chart 2: Logged Hours per Project -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Logged Hours (Approved)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="loggedHoursChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Chart 3: Expenses per Project -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-0">Expenses per Project</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="expensesProjectChart" height="250"></canvas>
             </div>
         </div>
     </div>
@@ -125,12 +147,66 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right' }
+                    legend: { position: 'bottom' }
                 }
             }
         });
     } else {
         document.getElementById('projectStatusChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No active projects assigned to you.</p>';
+    }
+
+    // Logged Hours Chart
+    const ctxLoggedHours = document.getElementById('loggedHoursChart').getContext('2d');
+    const loggedHoursLabels = JSON.parse('{{ charts.logged_hours_per_project.labels | tojson | safe }}');
+    const loggedHoursData = JSON.parse('{{ charts.logged_hours_per_project.data | tojson | safe }}');
+
+    if (loggedHoursLabels.length > 0) {
+        new Chart(ctxLoggedHours, {
+            type: 'bar',
+            data: {
+                labels: loggedHoursLabels,
+                datasets: [{
+                    label: 'Logged Hours',
+                    data: loggedHoursData,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    } else {
+        document.getElementById('loggedHoursChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No logged hours data.</p>';
+    }
+
+    // Expenses per Project Chart
+    const ctxExpenses = document.getElementById('expensesProjectChart').getContext('2d');
+    const expensesLabels = JSON.parse('{{ charts.expenses_per_project.labels | tojson | safe }}');
+    const expensesData = JSON.parse('{{ charts.expenses_per_project.data | tojson | safe }}');
+
+    if (expensesLabels.length > 0) {
+        new Chart(ctxExpenses, {
+            type: 'bar',
+            data: {
+                labels: expensesLabels,
+                datasets: [{
+                    label: 'Expenses ($)',
+                    data: expensesData,
+                    backgroundColor: '#ef4444',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    } else {
+        document.getElementById('expensesProjectChart').parentElement.innerHTML = '<p class="text-muted text-center mt-5">No expenses data.</p>';
     }
 });
 </script>
