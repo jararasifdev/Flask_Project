@@ -11,7 +11,7 @@ invoices_bp = Blueprint('invoices_bp', __name__)
 
 @invoices_bp.route('/invoices')
 @login_required
-@role_required('Admin', 'Accountant', 'Project Manager')
+@role_required('Admin', 'Accountant')
 def list_invoices():
     status_filter = request.args.get('status')
     client_filter = request.args.get('client_id')
@@ -20,7 +20,10 @@ def list_invoices():
     clients = Client.query.filter_by(company_id=current_user.company_id).all()
 
     if status_filter:
-        query = query.filter(Invoice.status == status_filter)
+        if status_filter == 'Unpaid':
+            query = query.filter(Invoice.status != 'Paid')
+        else:
+            query = query.filter(Invoice.status == status_filter)
     if client_filter:
         query = query.filter(Invoice.client_id == client_filter)
 
@@ -29,7 +32,7 @@ def list_invoices():
 
 @invoices_bp.route('/invoices/create', methods=['GET', 'POST'])
 @login_required
-@role_required('Admin', 'Accountant', 'Project Manager')
+@role_required('Admin', 'Accountant')
 def create_invoice():
     form = InvoiceForm()
     
@@ -99,7 +102,7 @@ def create_invoice():
 
 @invoices_bp.route('/invoices/<invoice_id>', methods=['GET'])
 @login_required
-@role_required('Admin', 'Accountant', 'Project Manager')
+@role_required('Admin', 'Accountant')
 def view_invoice(invoice_id):
     invoice = Invoice.query.filter_by(id=invoice_id, company_id=current_user.company_id).first_or_404()
     item_form = InvoiceItemForm()
@@ -109,7 +112,7 @@ def view_invoice(invoice_id):
 
 @invoices_bp.route('/invoices/<invoice_id>/update_status', methods=['POST'])
 @login_required
-@role_required('Admin', 'Accountant', 'Project Manager')
+@role_required('Admin', 'Accountant')
 def update_invoice_status(invoice_id):
     invoice = Invoice.query.filter_by(id=invoice_id, company_id=current_user.company_id).first_or_404()
     form = InvoiceStatusForm()
@@ -121,7 +124,7 @@ def update_invoice_status(invoice_id):
 
 @invoices_bp.route('/invoices/<invoice_id>/add_item', methods=['POST'])
 @login_required
-@role_required('Admin', 'Accountant', 'Project Manager')
+@role_required('Admin', 'Accountant')
 def add_item(invoice_id):
     invoice = Invoice.query.filter_by(id=invoice_id, company_id=current_user.company_id).first_or_404()
     form = InvoiceItemForm()
@@ -145,11 +148,19 @@ def add_item(invoice_id):
 
 @invoices_bp.route('/invoices/<invoice_id>/add_payment', methods=['POST'])
 @login_required
-@role_required('Admin', 'Accountant', 'Project Manager')
+@role_required('Admin', 'Accountant')
 def add_payment(invoice_id):
     invoice = Invoice.query.filter_by(id=invoice_id, company_id=current_user.company_id).first_or_404()
     form = PaymentForm()
     if form.validate_on_submit():
+        existing_payment = Payment.query.filter_by(
+            invoice_id=invoice.id,
+            reference_number=form.reference_number.data
+        ).first()
+
+        if existing_payment:
+            flash(f"Reference number '{form.reference_number.data}' already exists. Please enter a different reference number.", 'danger')
+            return redirect(url_for('invoices_bp.view_invoice', invoice_id=invoice.id))
         payment = Payment(
             invoice_id=invoice.id,
             payment_date=form.payment_date.data,
