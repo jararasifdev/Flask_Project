@@ -61,10 +61,13 @@ def dashboard():
         total_expenses = db.session.query(func.sum(Expense.amount)).join(Project).filter(Project.project_manager_id == emp_id, Expense.status == 'Approved').scalar() or 0
         budget_used = f"{(total_expenses / total_budget * 100):.1f}%" if total_budget > 0 else '0%'
 
+        pending_expenses_count = Expense.query.join(Project).filter(Project.project_manager_id==emp_id, Expense.status=='Pending').count() if emp_id else 0
+        pending_timesheets_count = Timesheet.query.join(Project).filter(Project.project_manager_id==emp_id, Timesheet.status=='Pending').count() if emp_id else 0
+        
         stats = {
             'active_projects': Project.query.filter_by(project_manager_id=emp_id, status='In Progress').count(),
             'team_members': team_members_count,
-            'pending_approvals': Expense.query.join(Project).filter(Project.project_manager_id==emp_id, Expense.status=='Pending').count() if emp_id else 0,
+            'pending_approvals': pending_expenses_count + pending_timesheets_count,
             'budget_used': budget_used
         }
 

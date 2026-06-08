@@ -16,13 +16,24 @@
                 {% endif %}
             </p>
         </div>
-        {% if run.status == 'Draft' %}
-        <form method="POST" action="{{ url_for('payroll_bp.approve_run', run_id=run.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to finalize this payroll run? This cannot be undone.');">
-            <button type="submit" class="btn btn-success shadow-sm">
-                <i class="bi bi-check-circle me-1"></i> Finalize Payroll
-            </button>
-        </form>
-        {% endif %}
+        <div class="d-flex align-items-center gap-3">
+            <form method="GET" action="{{ url_for('payroll_bp.view_run', run_id=run.id) }}" class="d-flex m-0">
+                <div class="input-group shadow-sm">
+                    <input type="text" name="search" class="form-control" placeholder="Search employee..." value="{{ search_query }}">
+                    <button class="btn btn-outline-secondary" type="submit" title="Search"><i class="bi bi-search"></i></button>
+                    {% if search_query %}
+                    <a href="{{ url_for('payroll_bp.view_run', run_id=run.id) }}" class="btn btn-outline-danger" title="Clear Search"><i class="bi bi-x-circle"></i></a>
+                    {% endif %}
+                </div>
+            </form>
+            {% if run.status == 'Draft' %}
+            <form method="POST" action="{{ url_for('payroll_bp.approve_run', run_id=run.id) }}" class="m-0" onsubmit="return confirm('Are you sure you want to finalize this payroll run? This cannot be undone.');">
+                <button type="submit" class="btn btn-success shadow-sm text-nowrap">
+                    <i class="bi bi-check-circle me-1"></i> Finalize Payroll
+                </button>
+            </form>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -42,7 +53,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in run.payroll_items %}
+                    {% for item in items %}
                     <tr>
                         <td class="ps-4">
                             <div class="fw-semibold">{{ item.employee.full_name }}</div>

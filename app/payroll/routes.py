@@ -57,7 +57,14 @@ def list_runs():
 @role_required('Admin', 'Accountant')
 def view_run(run_id):
     run = PayrollRun.query.filter_by(id=run_id, company_id=current_user.company_id).first_or_404()
-    return render_template('payroll/view.html', run=run, title=f'Payroll Run - {run.payroll_month.strftime("%B %Y")}')
+    
+    search_query = request.args.get('search', '').strip()
+    if search_query:
+        items = [item for item in run.payroll_items if search_query.lower() in item.employee.full_name.lower()]
+    else:
+        items = run.payroll_items
+        
+    return render_template('payroll/view.html', run=run, items=items, search_query=search_query, title=f'Payroll Run - {run.payroll_month.strftime("%B %Y")}')
 
 @payroll_bp.route('/payroll/item/<item_id>', methods=['GET', 'POST'])
 @login_required
