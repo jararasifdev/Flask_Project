@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import Timesheet, Project, Expense, ExpenseCategory, EmployeeProject
+from app.models import Timesheet, Project, Expense, ExpenseCategory, EmployeeProject, Role, User
 from app.forms import TimesheetForm, ReviewTimesheetForm
 from app.utils.decorators import role_required
 from app.utils.notifications import create_notification
@@ -94,6 +94,33 @@ def log_time():
             task_description=form.task_description.data
         )
         db.session.add(timesheet)
+        
+        project = Project.query.get(timesheet.project_id)
+        
+        admin_role = Role.query.filter_by(name='Admin').first()
+        admins = User.query.filter_by(company_id=current_user.company_id, role_id=admin_role.id).all() if admin_role else []
+        
+        if current_user.role.name == 'Employee' and project and project.project_manager and project.project_manager.user_id:
+            pm_user_id = project.project_manager.user_id
+            if pm_user_id != current_user.id:
+                create_notification(
+                    company_id=current_user.company_id,
+                    user_id=pm_user_id,
+                    type_name='Time Logged',
+                    title='New Time Logged',
+                    message=f"{current_user.employee.full_name} logged {total_hours:.2f} hours for project '{project.name}'."
+                )
+                
+        for admin in admins:
+            if admin.id != current_user.id:
+                create_notification(
+                    company_id=current_user.company_id,
+                    user_id=admin.id,
+                    type_name='Time Logged',
+                    title='New Time Logged',
+                    message=f"{current_user.employee.full_name} logged {total_hours:.2f} hours for project '{project.name}'."
+                )
+                
         db.session.commit()
         flash('Time logged successfully.', 'success')
         return redirect(url_for('time_tracking_bp.list_timesheets'))

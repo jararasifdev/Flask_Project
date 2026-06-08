@@ -37,10 +37,22 @@ def check_budget_threshold(project):
             )
             db.session.add(alert)
         if percentage >= 100 or percentage >= 80:
-            if project.project_manager_id and project.project_manager:
+            if project.project_manager_id and project.project_manager and project.project_manager.user_id:
+                pm_user_id = project.project_manager.user_id
                 create_notification(
                     company_id=project.company_id,
-                    user_id=project.manager.user_id,
+                    user_id=pm_user_id,
+                    type_name='Budget Alert',
+                    title='Budget Exceeded' if percentage >= 100 else 'Budget Warning',
+                    message=f'Project {project.name} budget status: {percentage:.1f}%'
+                )
+                
+            admin_role = Role.query.filter_by(name='Admin').first()
+            admins = User.query.filter_by(company_id=project.company_id, role_id=admin_role.id).all() if admin_role else []
+            for admin in admins:
+                create_notification(
+                    company_id=project.company_id,
+                    user_id=admin.id,
                     type_name='Budget Alert',
                     title='Budget Exceeded' if percentage >= 100 else 'Budget Warning',
                     message=f'Project {project.name} budget status: {percentage:.1f}%'
@@ -137,13 +149,10 @@ def submit_expense():
             return redirect(url_for('expenses_bp.list_expenses'))
             
         db.session.add(expense)
-        db.session.commit()
         
         project = Project.query.get(expense.project_id)
         admin_role = Role.query.filter_by(name='Admin').first()
         admins = User.query.filter_by(company_id=current_user.company_id, role_id=admin_role.id).all() if admin_role else []
-        
-        notified_users = set()
         
         if project and project.project_manager and project.project_manager.user_id:
             pm_user_id = project.project_manager.user_id
@@ -155,10 +164,9 @@ def submit_expense():
                     title='New Expense Submitted',
                     message=f"{current_user.employee.full_name} submitted a new expense of ${expense.amount} for project '{project.name}'."
                 )
-                notified_users.add(pm_user_id)
                 
         for admin in admins:
-            if admin.id != current_user.id and admin.id not in notified_users:
+            if admin.id != current_user.id:
                 create_notification(
                     company_id=current_user.company_id,
                     user_id=admin.id,
@@ -166,7 +174,6 @@ def submit_expense():
                     title='New Expense Submitted',
                     message=f"{current_user.employee.full_name} submitted a new expense of ${expense.amount} for project '{project.name}'."
                 )
-                notified_users.add(admin.id)
                 
         db.session.commit()
 
