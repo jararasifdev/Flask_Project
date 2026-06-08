@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold">All Notifications</h2>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+            {% for notif in notifications %}
+                <div class="list-group-item p-4 {% if not notif.is_read %}bg-light border-start border-4 border-primary{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <span class="badge bg-primary-light text-primary me-2">{{ notif.type.name if notif.type else 'Notification' }}</span>
+                            {% if not notif.is_read %}
+                                <span class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">New</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">{{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </div>
+                    <h6 class="fw-bold mb-1">{{ notif.title }}</h6>
+                    <p class="mb-0 text-muted" style="white-space: pre-wrap;">{{ notif.message }}</p>
+                </div>
+            {% else %}
+                <div class="p-5 text-center text-muted">
+                    <i class="bi bi-bell-slash fs-1 d-block mb-3"></i>
+                    <p class="mb-0">You have no notifications.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
