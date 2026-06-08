@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, abort
 from flask_login import login_required, current_user
 from app import db
 from sqlalchemy import func
-from app.models import Client, Project, EmployeeProject, Expense, ExpenseCategory, Employee, Timesheet, User, Role
+from app.models import Client, Project, EmployeeProject, Expense, ExpenseCategory, Employee, Timesheet, User, Role, Invoice, PayrollItem, Payment
 from datetime import datetime, timedelta
 
 dashboard_bp = Blueprint('dashboard_bp', __name__)
@@ -24,7 +24,7 @@ def dashboard():
             'total_employees': Employee.query.join(User).join(Role).filter(Employee.company_id==company_id, Role.name != 'Admin').count(),
             'total_projects': Project.query.filter_by(company_id=company_id).count(),
             'pending_expenses': Expense.query.filter_by(company_id=company_id, status='Pending').count(),
-            'invoices_due': 0 
+            'invoices_due': Invoice.query.filter(Invoice.company_id==company_id, Invoice.status != 'Paid').count()
         }
 
         proj_status_data = db.session.query(Project.status, func.count(Project.id)).filter_by(company_id=company_id).group_by(Project.status).all()
@@ -43,6 +43,12 @@ def dashboard():
         charts['projects_per_client'] = {
             'labels': [row[0] for row in clients_proj_data],
             'data': [row[1] for row in clients_proj_data]
+        }
+
+        logged_hours_data = db.session.query(Project.name, func.sum(Timesheet.total_hours)).join(Timesheet, Timesheet.project_id == Project.id).filter(Project.company_id == company_id, Timesheet.status == 'Approved').group_by(Project.name).all()
+        charts['logged_hours_per_project'] = {
+            'labels': [row[0] for row in logged_hours_data],
+            'data': [float(row[1]) if row[1] else 0 for row in logged_hours_data]
         }
 
         return render_template('dashboard/admin.html', stats=stats, charts=charts)
@@ -68,20 +74,48 @@ def dashboard():
             'data': [row[1] for row in proj_status_data]
         }
 
+        logged_hours_data = db.session.query(Project.name, func.sum(Timesheet.total_hours)).join(Timesheet, Timesheet.project_id == Project.id).filter(Project.project_manager_id == emp_id, Timesheet.status == 'Approved').group_by(Project.name).all()
+        charts['logged_hours_per_project'] = {
+            'labels': [row[0] for row in logged_hours_data],
+            'data': [float(row[1]) if row[1] else 0 for row in logged_hours_data]
+        }
+
+        expenses_data = db.session.query(Project.name, func.sum(Expense.amount)).join(Expense, Expense.project_id == Project.id).filter(Project.project_manager_id == emp_id, Expense.status == 'Approved').group_by(Project.name).all()
+        charts['expenses_per_project'] = {
+            'labels': [row[0] for row in expenses_data],
+            'data': [float(row[1]) if row[1] else 0 for row in expenses_data]
+        }
+
         return render_template('dashboard/manager.html', stats=stats, charts=charts)
 
     elif role_name == 'Accountant':
+        now = datetime.utcnow()
+        current_month = now.month
+        current_year = now.year
+        
+        monthly_revenue = db.session.query(func.sum(Payment.amount_paid)).join(Invoice).filter(
+            Invoice.company_id == company_id,
+            db.extract('month', Payment.payment_date) == current_month,
+            db.extract('year', Payment.payment_date) == current_year
+        ).scalar() or 0.0
+
         stats = {
-            'pending_payrolls': 0, 
-            'unpaid_invoices': 0, 
+            'pending_payrolls': PayrollItem.query.join(Employee).filter(Employee.company_id==company_id, PayrollItem.status != 'Approved').count(), 
+            'unpaid_invoices': Invoice.query.filter(Invoice.company_id==company_id, Invoice.status != 'Paid').count(),
             'expense_reports': Expense.query.filter_by(company_id=company_id, status='Pending').count(),
-            'monthly_revenue': '$0' 
+            'monthly_revenue': f"${monthly_revenue:,.2f}"
         }
 
         exp_status_data = db.session.query(Expense.status, func.count(Expense.id)).filter_by(company_id=company_id).group_by(Expense.status).all()
         charts['expenses_status'] = {
             'labels': [row[0] for row in exp_status_data],
             'data': [row[1] for row in exp_status_data]
+        }
+        
+        inv_status_data = db.session.query(Invoice.status, func.count(Invoice.id)).filter_by(company_id=company_id).group_by(Invoice.status).all()
+        charts['invoices_status'] = {
+            'labels': [row[0] for row in inv_status_data],
+            'data': [row[1] for row in inv_status_data]
         }
 
         return render_template('dashboard/accountant.html', stats=stats, charts=charts)
