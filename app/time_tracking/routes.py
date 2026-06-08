@@ -17,8 +17,8 @@ def list_timesheets():
 
     query = Timesheet.query
 
-    if current_user.role.name in ['Admin', 'Project Manager']:
-        if current_user.role.name == 'Admin':
+    if current_user.role.name in ['Admin', 'Project Manager','Accountant']:
+        if current_user.role.name == 'Admin' or current_user.role.name == 'Accountant':
             query = query.filter_by(company_id=current_user.company_id)
             projects = Project.query.filter_by(company_id=current_user.company_id).all()
         else:

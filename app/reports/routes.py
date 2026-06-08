@@ -46,8 +46,8 @@ def dashboard():
     total_income = sum(float(i.total_amount) for i in invoices if i.status in ['Paid', 'Partial', 'Sent'])
     total_expense = sum(float(e.amount) for e in all_expenses)
     total_payroll = sum(float(pi.net_salary) for pi in payroll_items)
-    
     total_costs = total_expense + total_payroll
+    employees = [e for e in employees if e.user and e.user.role.name != 'Admin']
     
     employee_names = [e.full_name for e in employees]
     employee_costs = []

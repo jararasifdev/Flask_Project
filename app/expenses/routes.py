@@ -10,6 +10,8 @@ from app.models.project import EmployeeProject
 from app.utils.notifications import create_notification
 from app.forms.expense_forms import ExpenseForm, ExpenseReviewForm, ExpenseCategoryForm
 from app.utils.decorators import role_required
+from app.models.user import User
+from app.models.role import Role
 
 expenses_bp = Blueprint('expenses_bp', __name__, url_prefix='/expenses')
 
@@ -136,6 +138,38 @@ def submit_expense():
             
         db.session.add(expense)
         db.session.commit()
+        
+        project = Project.query.get(expense.project_id)
+        admin_role = Role.query.filter_by(name='Admin').first()
+        admins = User.query.filter_by(company_id=current_user.company_id, role_id=admin_role.id).all() if admin_role else []
+        
+        notified_users = set()
+        
+        if project and project.project_manager and project.project_manager.user_id:
+            pm_user_id = project.project_manager.user_id
+            if pm_user_id != current_user.id:
+                create_notification(
+                    company_id=current_user.company_id,
+                    user_id=pm_user_id,
+                    type_name='New Expense',
+                    title='New Expense Submitted',
+                    message=f"{current_user.employee.full_name} submitted a new expense of ${expense.amount} for project '{project.name}'."
+                )
+                notified_users.add(pm_user_id)
+                
+        for admin in admins:
+            if admin.id != current_user.id and admin.id not in notified_users:
+                create_notification(
+                    company_id=current_user.company_id,
+                    user_id=admin.id,
+                    type_name='New Expense',
+                    title='New Expense Submitted',
+                    message=f"{current_user.employee.full_name} submitted a new expense of ${expense.amount} for project '{project.name}'."
+                )
+                notified_users.add(admin.id)
+                
+        db.session.commit()
+
         flash('Expense submitted successfully!', 'success')
         return redirect(url_for('expenses_bp.list_expenses'))
 
