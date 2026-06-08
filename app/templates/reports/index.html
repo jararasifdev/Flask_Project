@@ -1,9 +1,40 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-4">
-    <h2 class="fw-bold mb-0">Financial Reports</h2>
-    <p class="text-muted mb-0">Interactive overview of company finances</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Financial Reports</h2>
+        <p class="text-muted mb-0">Interactive overview of company finances</p>
+    </div>
+    <div>
+        <form method="GET" action="{{ url_for('reports_bp.dashboard') }}" class="d-flex gap-2 align-items-center" id="timeframeForm">
+            <select name="timeframe" class="form-select shadow-sm" onchange="handleTimeframeChange(this)" id="timeframeSelect" style="min-width: 160px;">
+                <option value="all_time" {% if timeframe == 'all_time' %}selected{% endif %}>All Time</option>
+                <option value="this_month" {% if timeframe == 'this_month' %}selected{% endif %}>This Month</option>
+                <option value="last_month" {% if timeframe == 'last_month' %}selected{% endif %}>Last Month</option>
+                <option value="this_quarter" {% if timeframe == 'this_quarter' %}selected{% endif %}>This Quarter</option>
+                <option value="last_quarter" {% if timeframe == 'last_quarter' %}selected{% endif %}>Last Quarter</option>
+                <option value="custom" {% if timeframe == 'custom' %}selected{% endif %}>Custom Range</option>
+            </select>
+            
+            <div id="customDateRange" class="d-flex gap-2 align-items-center {{ '' if timeframe == 'custom' else 'd-none' }}">
+                <input type="date" name="start_date" class="form-control shadow-sm" value="{{ request.args.get('start_date', '') }}">
+                <span class="text-muted">to</span>
+                <input type="date" name="end_date" class="form-control shadow-sm" value="{{ request.args.get('end_date', '') }}">
+                <button type="submit" class="btn btn-primary shadow-sm">Apply</button>
+            </div>
+        </form>
+    </div>
+    <script>
+    function handleTimeframeChange(selectElem) {
+        if (selectElem.value === 'custom') {
+            document.getElementById('customDateRange').classList.remove('d-none');
+        } else {
+            document.getElementById('customDateRange').classList.add('d-none');
+            document.getElementById('timeframeForm').submit();
+        }
+    }
+    </script>
 </div>
 
 <!-- Chart.js -->
