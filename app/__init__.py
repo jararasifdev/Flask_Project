@@ -31,6 +31,7 @@ def create_app(config_class=Config):
     from app.expenses.routes import expenses_bp
     from app.invoices.routes import invoices_bp
     from app.reports.routes import reports_bp
+    from app.payroll.routes import payroll_bp
     from app.time_tracking.routes import time_tracking_bp
     from app.notifications.routes import notifications_bp
 
@@ -45,6 +46,7 @@ def create_app(config_class=Config):
     app.register_blueprint(reports_bp)
     app.register_blueprint(time_tracking_bp)
     app.register_blueprint(notifications_bp)
+    app.register_blueprint(payroll_bp)
 
     @app.before_request
     def before_request():
