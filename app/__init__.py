@@ -22,6 +22,9 @@ def create_app(config_class=Config):
     bcrypt.init_app(app)
     migrate.init_app(app, db)
 
+    from app.scheduler import init_scheduler
+    init_scheduler(app)
+
     from app.auth.routes import auth_bp
     from app.dashboard.routes import dashboard_bp
     from app.employees.routes import employees_bp
@@ -35,6 +38,8 @@ def create_app(config_class=Config):
     from app.time_tracking.routes import time_tracking_bp
     from app.notifications.routes import notifications_bp
 
+    from app.superadmin.routes import superadmin_bp
+    
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(employees_bp)
     app.register_blueprint(departments_bp)
@@ -47,12 +52,28 @@ def create_app(config_class=Config):
     app.register_blueprint(time_tracking_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(payroll_bp)
+    app.register_blueprint(superadmin_bp)
 
     @app.before_request
     def before_request():
         g.start = time.time()
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         print(f"[{time.strftime('%H:%M:%S')}] ---> START {request.method} {request.path} (IP: {ip})")
+
+        from flask_login import current_user, logout_user
+        from flask import flash, redirect, url_for
+        
+        if current_user.is_authenticated:
+            if not current_user.company.is_active and not current_user.is_superadmin:
+                logout_user()
+                flash('Your company account has been suspended.', 'danger')
+                return redirect(url_for('auth_bp.login'))
+                
+            # Restrict Super Admins to their own portal
+            if current_user.is_superadmin:
+                if request.blueprint and request.blueprint not in ['superadmin_bp', 'auth_bp'] and not request.path.startswith('/static/'):
+                    flash('Super Administrators are restricted to the Platform Admin portal.', 'warning')
+                    return redirect(url_for('superadmin_bp.dashboard'))
 
         if request.args:
             print(f"  | Args: {dict(request.args)}")

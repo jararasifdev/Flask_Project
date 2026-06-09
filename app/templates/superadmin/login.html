@@ -1,0 +1,46 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}Platform Admin Login{% endblock %}
+
+{% block public_content %}
+<div class="row justify-content-center w-100">
+    <div class="col-md-5 col-lg-4">
+        <div class="text-center mb-4">
+            <h2 class="text-white fw-bold"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Platform Admin</h2>
+            <p class="text-muted">Master control portal</p>
+        </div>
+        
+        <div class="card shadow border-0 bg-dark text-white border border-secondary">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('superadmin_bp.login', secret=request.args.get('secret')) }}">
+                    <div class="mb-3">
+                        <label for="email" class="form-label text-white-50">Admin Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control bg-dark text-white border-secondary" id="email" name="email" required autofocus>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label text-white-50">Master Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-key"></i></span>
+                            <input type="password" class="form-control bg-dark text-white border-secondary" id="password" name="password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input bg-secondary border-secondary" id="remember" name="remember">
+                        <label class="form-check-label text-white-50" for="remember">Remember me</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-warning w-100 fw-bold">Authenticate</button>
+                </form>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('auth_bp.login') }}" class="text-muted text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Return to standard login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
