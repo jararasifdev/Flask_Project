@@ -25,9 +25,6 @@ def create_app(config_class=Config):
     from app.scheduler import init_scheduler
     init_scheduler(app)
     
-    from app.cli import setup_superadmin
-    app.cli.add_command(setup_superadmin)
-
     from app.auth.routes import auth_bp
     from app.dashboard.routes import dashboard_bp
     from app.employees.routes import employees_bp
