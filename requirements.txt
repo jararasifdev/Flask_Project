@@ -16,3 +16,4 @@ openpyxl
 reportlab
 python-dateutil
 email-validator
+Flask-APScheduler
