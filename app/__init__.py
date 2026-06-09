@@ -24,6 +24,9 @@ def create_app(config_class=Config):
 
     from app.scheduler import init_scheduler
     init_scheduler(app)
+    
+    from app.cli import setup_superadmin
+    app.cli.add_command(setup_superadmin)
 
     from app.auth.routes import auth_bp
     from app.dashboard.routes import dashboard_bp
@@ -64,12 +67,12 @@ def create_app(config_class=Config):
         from flask import flash, redirect, url_for
         
         if current_user.is_authenticated:
-            if not current_user.company.is_active and not current_user.is_superadmin:
-                logout_user()
-                flash('Your company account has been suspended.', 'danger')
-                return redirect(url_for('auth_bp.login'))
-                
-            # Restrict Super Admins to their own portal
+            if not current_user.is_superadmin:
+                if not current_user.company or not current_user.company.is_active:
+                    logout_user()
+                    flash('Your company account has been suspended.', 'danger')
+                    return redirect(url_for('auth_bp.login'))
+
             if current_user.is_superadmin:
                 if request.blueprint and request.blueprint not in ['superadmin_bp', 'auth_bp'] and not request.path.startswith('/static/'):
                     flash('Super Administrators are restricted to the Platform Admin portal.', 'warning')
