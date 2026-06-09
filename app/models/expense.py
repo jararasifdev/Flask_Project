@@ -26,6 +26,7 @@ class Expense(db.Model):
     submitted_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     approved_at = db.Column(db.DateTime, nullable=True)
     is_invoiced = db.Column(db.Boolean, default=False)
+    invoice_id = db.Column(db.String(32), db.ForeignKey('invoices.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
