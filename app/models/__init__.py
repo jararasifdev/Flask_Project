@@ -10,6 +10,7 @@ from app.models.expense import Expense, ExpenseCategory, BudgetAlert
 from app.models.payroll import PayrollRun, PayrollItem
 from app.models.invoice import Invoice, InvoiceItem, Payment
 from app.models.report import FinancialReport
+from app.models.company_expense import CompanyExpense
 from app.models.timesheet import Timesheet
 from app.models.notification import Notification, NotificationType
 from app.models.base import generate_uuid

@@ -10,8 +10,8 @@ def load_user(user_id):
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.String(32), primary_key=True, default=generate_uuid)
-    company_id = db.Column(db.String(32), db.ForeignKey('company.id'), nullable=False)
-    role_id = db.Column(db.String(32), db.ForeignKey('roles.id'), nullable=False)
+    company_id = db.Column(db.String(32), db.ForeignKey('company.id'), nullable=True)
+    role_id = db.Column(db.String(32), db.ForeignKey('roles.id'), nullable=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
