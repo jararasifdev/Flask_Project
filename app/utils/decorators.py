@@ -18,3 +18,16 @@ def role_required(*roles):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+def superadmin_required(f):
+    """
+    Decorator to restrict access to super administrators.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth_bp.login'))
+        if not current_user.is_superadmin:
+            flash("You do not have permission to access the super admin panel.", "danger")
+            return redirect(url_for('dashboard_bp.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
