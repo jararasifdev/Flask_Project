@@ -6,6 +6,7 @@ from app import db
 from datetime import datetime
 from app.models.project import Project, EmployeeProject
 from app.models.expense import Expense, ExpenseCategory, BudgetAlert
+from app.models.company_expense import CompanyExpense
 from app.models.project import EmployeeProject
 from app.utils.notifications import create_notification
 from app.forms.expense_forms import ExpenseForm, ExpenseReviewForm, ExpenseCategoryForm
@@ -14,6 +15,14 @@ from app.models.user import User
 from app.models.role import Role
 
 expenses_bp = Blueprint('expenses_bp', __name__, url_prefix='/expenses')
+
+@expenses_bp.route('/company', methods=['GET'])
+@login_required
+@role_required('Admin', 'Accountant')
+def list_company_expenses():
+    expenses = CompanyExpense.query.filter_by(company_id=current_user.company_id).order_by(CompanyExpense.expense_date.desc()).all()
+    total_overhead = sum(e.amount for e in expenses)
+    return render_template('expenses/company.html', expenses=expenses, total_overhead=total_overhead, title='Company Expenses')
 
 def check_budget_threshold(project):
     total_approved = sum(exp.amount for exp in project.expenses if exp.status == 'Approved')
