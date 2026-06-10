@@ -77,7 +77,7 @@
                                 {% endfor %}
                             {% endif %}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             {{ form.joining_date.label(class="form-label fw-semibold") }}
                             {{ form.joining_date(class="form-control", type="date") }}
                             {% if form.joining_date.errors %}
@@ -86,7 +86,7 @@
                                 {% endfor %}
                             {% endif %}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3" id="salary_div">
                             {{ form.monthly_salary.label(class="form-label fw-semibold") }}
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
@@ -94,6 +94,18 @@
                             </div>
                             {% if form.monthly_salary.errors %}
                                 {% for error in form.monthly_salary.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 mb-3" id="hourly_div" style="display: none;">
+                            {{ form.hourly_rate.label(class="form-label fw-semibold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.hourly_rate(class="form-control", placeholder="0.00") }}
+                            </div>
+                            {% if form.hourly_rate.errors %}
+                                {% for error in form.hourly_rate.errors %}
                                     <div class="text-danger small mt-1">{{ error }}</div>
                                 {% endfor %}
                             {% endif %}
@@ -109,4 +121,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('employment_type');
+        const salaryDiv = document.getElementById('salary_div');
+        const hourlyDiv = document.getElementById('hourly_div');
+
+        function toggleFields() {
+            if (typeSelect.value === 'Hourly') {
+                salaryDiv.style.display = 'none';
+                hourlyDiv.style.display = 'block';
+            } else {
+                salaryDiv.style.display = 'block';
+                hourlyDiv.style.display = 'none';
+            }
+        }
+
+        if (typeSelect) {
+            typeSelect.addEventListener('change', toggleFields);
+            toggleFields();
+        }
+    });
+</script>
 {% endblock %}

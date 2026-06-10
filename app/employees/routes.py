@@ -68,6 +68,7 @@ def create_employee():
             phone=form.phone.data,
             employment_type=form.employment_type.data,
             joining_date=form.joining_date.data,
+            hourly_rate=form.hourly_rate.data,
             monthly_salary=form.monthly_salary.data
         )
         db.session.add(employee)
@@ -108,6 +109,7 @@ def edit_employee(employee_id):
         employee.phone = form.phone.data
         employee.employment_type = form.employment_type.data
         employee.joining_date = form.joining_date.data
+        employee.hourly_rate = form.hourly_rate.data
         employee.monthly_salary = form.monthly_salary.data
         
         db.session.commit()
@@ -122,6 +124,7 @@ def edit_employee(employee_id):
         form.phone.data = employee.phone
         form.employment_type.data = employee.employment_type
         form.joining_date.data = employee.joining_date
+        form.hourly_rate.data = employee.hourly_rate
         form.monthly_salary.data = employee.monthly_salary
 
     return render_template('employees/edit.html', form=form, employee=employee, title="Edit Employee")

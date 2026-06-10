@@ -11,11 +11,11 @@ class AddEmployeeForm(FlaskForm):
     phone = StringField('Phone Number', validators=[Length(max=50)])
     employment_type = SelectField('Employment Type', choices=[
         ('Full-time', 'Full-time'),
-        ('Part-time', 'Part-time'),
-        ('Contractor', 'Contractor')
+        ('Hourly', 'Hourly')
     ], validators=[Optional()])
     joining_date = DateField('Joining Date', format='%Y-%m-%d', validators=[Optional()])
     monthly_salary = DecimalField('Monthly Salary', places=2, validators=[Optional()])
+    hourly_rate = DecimalField('Hourly Rate', places=2, validators=[Optional()])
     submit = SubmitField('Create Employee Account')
 
 class EditEmployeeForm(FlaskForm):
@@ -26,9 +26,9 @@ class EditEmployeeForm(FlaskForm):
     phone = StringField('Phone Number', validators=[Length(max=50)])
     employment_type = SelectField('Employment Type', choices=[
         ('Full-time', 'Full-time'),
-        ('Part-time', 'Part-time'),
-        ('Contractor', 'Contractor')
+        ('Hourly', 'Hourly')
     ], validators=[Optional()])
     joining_date = DateField('Joining Date', format='%Y-%m-%d', validators=[Optional()])
     monthly_salary = DecimalField('Monthly Salary', places=2, validators=[Optional()])
+    hourly_rate = DecimalField('Hourly Rate', places=2, validators=[Optional()])
     submit = SubmitField('Update Employee Profile')

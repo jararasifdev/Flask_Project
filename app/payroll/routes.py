@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import PayrollRun, PayrollItem, Employee
+from app.models import PayrollRun, PayrollItem, Employee, Timesheet, CompanyExpense
 from app.forms import GeneratePayrollForm, EditPayrollItemForm
 from app.utils.decorators import role_required
 from app.utils.notifications import create_notification
 from datetime import datetime
+import calendar
 
 payroll_bp = Blueprint('payroll_bp', __name__)
 
@@ -37,7 +38,22 @@ def list_runs():
             if emp.user and emp.user.role.name == 'Admin':
                 continue
                 
-            base_salary = emp.monthly_salary or 0
+            if emp.employment_type == 'Hourly':
+                start_date = month.replace(day=1)
+                last_day = calendar.monthrange(month.year, month.month)[1]
+                end_date = month.replace(day=last_day)
+                
+                approved_timesheets = Timesheet.query.filter(
+                    Timesheet.employee_id == emp.id,
+                    Timesheet.work_date >= start_date,
+                    Timesheet.work_date <= end_date,
+                    Timesheet.status == 'Approved'
+                ).all()
+                total_hours = sum(ts.total_hours for ts in approved_timesheets)
+                base_salary = float(emp.hourly_rate or 0) * float(total_hours)
+            else:
+                base_salary = float(emp.monthly_salary or 0)
+                
             item = PayrollItem(
                 payroll_run_id=new_run.id,
                 employee_id=emp.id,
@@ -115,6 +131,16 @@ def approve_run(run_id):
                 title='Payroll Finalized',
                 message=f'Your payroll for {run.payroll_month.strftime("%B %Y")} has been finalized. Net salary: ${item.net_salary:.2f}.'
             )
+            
+        if item.net_salary > 0:
+            expense = CompanyExpense(
+                company_id=current_user.company_id,
+                title=f"Payroll - {item.employee.full_name} - {run.payroll_month.strftime('%b %Y')}",
+                amount=item.net_salary,
+                expense_date=datetime.now().date(),
+                description=f"Payroll disbursement for {item.employee.full_name} for the month of {run.payroll_month.strftime('%B %Y')}."
+            )
+            db.session.add(expense)
             
     db.session.commit()
     flash('Payroll run approved and finalized.', 'success')

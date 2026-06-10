@@ -63,19 +63,26 @@
 
                     <h6 class="fw-bold mb-3">HR Information</h6>
                     <div class="row mb-4">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             {{ form.employment_type.label(class="form-label fw-semibold") }}
                             {{ form.employment_type(class="form-select") }}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             {{ form.joining_date.label(class="form-label fw-semibold") }}
                             {{ form.joining_date(class="form-control", type="date") }}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3" id="salary_div">
                             {{ form.monthly_salary.label(class="form-label fw-semibold") }}
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 {{ form.monthly_salary(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3" id="hourly_div" style="display: none;">
+                            {{ form.hourly_rate.label(class="form-label fw-semibold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.hourly_rate(class="form-control") }}
                             </div>
                         </div>
                     </div>
@@ -91,4 +98,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('employment_type');
+        const salaryDiv = document.getElementById('salary_div');
+        const hourlyDiv = document.getElementById('hourly_div');
+
+        function toggleFields() {
+            if (typeSelect.value === 'Hourly') {
+                salaryDiv.style.display = 'none';
+                hourlyDiv.style.display = 'block';
+            } else {
+                salaryDiv.style.display = 'block';
+                hourlyDiv.style.display = 'none';
+            }
+        }
+
+        if (typeSelect) {
+            typeSelect.addEventListener('change', toggleFields);
+            toggleFields();
+        }
+    });
+</script>
 {% endblock %}
