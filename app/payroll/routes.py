@@ -10,11 +10,26 @@ import calendar
 
 payroll_bp = Blueprint('payroll_bp', __name__)
 
-@payroll_bp.route('/payroll', methods=['GET', 'POST'])
+def get_weekdays_in_month(year, month):
+    num_days = calendar.monthrange(year, month)[1]
+    weekdays = 0
+    for day in range(1, num_days + 1):
+        if calendar.weekday(year, month, day) < 5:
+            weekdays += 1
+    return weekdays
+
+@payroll_bp.route('/payroll', methods=['GET'])
 @login_required
 @role_required('Admin', 'Accountant')
 def list_runs():
     runs = PayrollRun.query.filter_by(company_id=current_user.company_id).order_by(PayrollRun.payroll_month.desc()).all()
+    form = GeneratePayrollForm()
+    return render_template('payroll/index.html', runs=runs, form=form, title='Payroll Management')
+
+@payroll_bp.route('/payroll/generate', methods=['POST'])
+@login_required
+@role_required('Admin', 'Accountant')
+def generate_payroll():
     form = GeneratePayrollForm()
     
     if form.validate_on_submit():
@@ -38,27 +53,47 @@ def list_runs():
             if emp.user and emp.user.role.name == 'Admin':
                 continue
                 
+            start_date = month.replace(day=1)
+            last_day = calendar.monthrange(month.year, month.month)[1]
+            end_date = month.replace(day=last_day)
+            
+            approved_timesheets = Timesheet.query.filter(
+                Timesheet.employee_id == emp.id,
+                Timesheet.work_date >= start_date,
+                Timesheet.work_date <= end_date,
+                Timesheet.status == 'Approved'
+            ).all()
+            total_hours = sum(ts.total_hours for ts in approved_timesheets)
+            
+            deductions = 0.0
+            overtime_amount = 0.0
+            
             if emp.employment_type == 'Hourly':
-                start_date = month.replace(day=1)
-                last_day = calendar.monthrange(month.year, month.month)[1]
-                end_date = month.replace(day=last_day)
-                
-                approved_timesheets = Timesheet.query.filter(
-                    Timesheet.employee_id == emp.id,
-                    Timesheet.work_date >= start_date,
-                    Timesheet.work_date <= end_date,
-                    Timesheet.status == 'Approved'
-                ).all()
-                total_hours = sum(ts.total_hours for ts in approved_timesheets)
                 base_salary = float(emp.hourly_rate or 0) * float(total_hours)
+                net_salary = base_salary
             else:
                 base_salary = float(emp.monthly_salary or 0)
+                weekdays = get_weekdays_in_month(month.year, month.month)
+                required_hours = weekdays * 8.0
+                
+                hourly_equivalent = base_salary / required_hours if required_hours > 0 else 0
+                
+                if total_hours < required_hours:
+                    shortfall = required_hours - float(total_hours)
+                    deductions = shortfall * hourly_equivalent
+                elif total_hours > required_hours:
+                    overtime_hours = float(total_hours) - required_hours
+                    overtime_amount = overtime_hours * hourly_equivalent
+                    
+                net_salary = base_salary - deductions + overtime_amount
                 
             item = PayrollItem(
                 payroll_run_id=new_run.id,
                 employee_id=emp.id,
                 base_salary=base_salary,
-                net_salary=base_salary
+                deductions=deductions,
+                overtime_amount=overtime_amount,
+                net_salary=net_salary
             )
             db.session.add(item)
             
@@ -66,7 +101,8 @@ def list_runs():
         flash('Payroll generated successfully.', 'success')
         return redirect(url_for('payroll_bp.view_run', run_id=new_run.id))
         
-    return render_template('payroll/index.html', runs=runs, form=form, title='Payroll Management')
+    flash('Invalid form submission.', 'danger')
+    return redirect(url_for('payroll_bp.list_runs'))
 
 @payroll_bp.route('/payroll/<run_id>', methods=['GET'])
 @login_required
