@@ -8,7 +8,14 @@
     <div class="card-body p-0">
         <div class="list-group list-group-flush">
             {% for notif in notifications %}
-                <div class="list-group-item p-4 {% if not notif.is_read %}bg-light border-start border-4 border-primary{% endif %}">
+                <div class="list-group-item list-group-item-action p-4 {% if not notif.is_read %}bg-light border-start border-4 border-primary{% endif %}"
+                     style="cursor: pointer;"
+                     onclick="viewPageNotification(this)"
+                     data-id="{{ notif.id }}"
+                     data-title="{{ notif.title }}"
+                     data-message="{{ notif.message }}"
+                     data-type="{{ notif.type.name if notif.type else 'Notification' }}"
+                     data-date="{{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div>
                             <span class="badge bg-primary-light text-primary me-2">{{ notif.type.name if notif.type else 'Notification' }}</span>
@@ -19,7 +26,7 @@
                         <small class="text-muted">{{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
                     </div>
                     <h6 class="fw-bold mb-1">{{ notif.title }}</h6>
-                    <p class="mb-0 text-muted" style="white-space: pre-wrap;">{{ notif.message }}</p>
+                    <p class="mb-0 text-muted text-truncate" style="max-height: 3rem;">{{ notif.message }}</p>
                 </div>
             {% else %}
                 <div class="p-5 text-center text-muted">
@@ -30,4 +37,32 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function viewPageNotification(element) {
+        const id = element.getAttribute('data-id');
+        const title = element.getAttribute('data-title');
+        const message = element.getAttribute('data-message');
+        const type = element.getAttribute('data-type');
+        const date = element.getAttribute('data-date');
+        
+        document.getElementById('notifDetailTitle').innerText = title;
+        document.getElementById('notifDetailMessage').innerText = message;
+        document.getElementById('notifDetailType').innerText = type;
+        document.getElementById('notifDetailDate').innerText = date;
+        
+        const notifModal = new bootstrap.Modal(document.getElementById('notificationDetailModal'));
+        notifModal.show();
+        
+        if (typeof markRead === 'function') {
+            markRead(null, id);
+        }
+        
+        element.classList.remove('bg-light', 'border-start', 'border-4', 'border-primary');
+        const newBadge = element.querySelector('.badge.bg-danger');
+        if (newBadge) newBadge.remove();
+    }
+</script>
 {% endblock %}
