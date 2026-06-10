@@ -9,6 +9,22 @@
         </a>
     </div>
 
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('superadmin_bp.list_users') }}" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="company_id" class="form-label">Filter by Company</label>
+                    <select name="company_id" id="company_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Companies</option>
+                        {% for c in companies %}
+                            <option value="{{ c.id }}" {% if selected_company_id == c.id %}selected{% endif %}>{{ c.company_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
             <div class="table-responsive">

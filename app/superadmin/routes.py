@@ -158,5 +158,13 @@ def create_company():
 @login_required
 @superadmin_required
 def list_users():
-    users = User.query.order_by(User.created_at.desc()).all()
-    return render_template('superadmin/users.html', users=users, title='All Users')
+    company_id = request.args.get('company_id')
+    
+    query = User.query
+    if company_id:
+        query = query.filter_by(company_id=company_id)
+        
+    users = query.order_by(User.created_at.desc()).all()
+    companies = Company.query.order_by(Company.company_name.asc()).all()
+    
+    return render_template('superadmin/users.html', users=users, companies=companies, selected_company_id=company_id, title='All Users')
