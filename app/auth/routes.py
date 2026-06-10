@@ -73,6 +73,14 @@ def login():
         if form.validate_on_submit():
             user = User.query.filter_by(email=form.email.data).first()
             if user and bcrypt.check_password_hash(user.password_hash, form.password.data):
+                if user.is_superadmin:
+                    flash('Super Administrators must use the dedicated Platform Admin login portal.', 'danger')
+                    return render_template('auth/login.html', title='Login', form=form)
+                    
+                if not user.company.is_active:
+                    flash('Your company account has been suspended. Please contact support.', 'danger')
+                    return render_template('auth/login.html', title='Login', form=form)
+                
                 login_user(user, remember=form.remember.data)
                 user.last_login_at = datetime.datetime.now(datetime.timezone.utc)
                 

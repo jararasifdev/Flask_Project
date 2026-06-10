@@ -8,19 +8,47 @@
     </div>
     <div class="d-flex align-items-center gap-2">
         <form method="GET" action="{{ url_for('time_tracking_bp.list_timesheets') }}" class="d-flex gap-2">
-            <select name="status" class="form-select border-0 shadow-sm" onchange="this.form.submit()" style="min-width: 130px;">
+            <select name="status" class="form-select border-0 shadow-sm" onchange="this.form.submit()"
+                style="min-width: 130px;">
                 <option value="">All Status</option>
-                <option value="Pending" {% if current_status == 'Pending' %}selected{% endif %}>Pending</option>
-                <option value="Approved" {% if current_status == 'Approved' %}selected{% endif %}>Approved</option>
-                <option value="Rejected" {% if current_status == 'Rejected' %}selected{% endif %}>Rejected</option>
+                <option value="Pending" {% if current_status=='Pending' %}selected{% endif %}>Pending</option>
+                <option value="Approved" {% if current_status=='Approved' %}selected{% endif %}>Approved</option>
+                <option value="Rejected" {% if current_status=='Rejected' %}selected{% endif %}>Rejected</option>
             </select>
-            <select name="project_id" class="form-select border-0 shadow-sm" onchange="this.form.submit()" style="min-width: 180px;">
+            <select name="project_id" class="form-select border-0 shadow-sm" onchange="this.form.submit()"
+                style="min-width: 180px;">
                 <option value="">All Projects</option>
                 {% for project in projects %}
-                <option value="{{ project.id }}" {% if current_project|string == project.id|string %}selected{% endif %}>{{ project.name }}</option>
+                <option value="{{ project.id }}" {% if current_project|string==project.id|string %}selected{% endif %}>
+                    {{ project.name }}</option>
                 {% endfor %}
             </select>
+            {% if current_user.role.name in ['Admin', 'Project Manager'] %}
+            <div class="input-group shadow-sm" style="min-width: 200px;">
+                <input type="text" name="search" class="form-control border-0" placeholder="Search Employee"
+                    value="{{ search_query or '' }}">
+                {% if search_query %}
+                <a href="{{ url_for('time_tracking_bp.list_timesheets', status=current_status, project_id=current_project) }}"
+                    class="btn btn-light border-0" title="Clear Search">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% else %}
+                <button type="submit" class="btn btn-light border-0"><i class="bi bi-search"></i></button>
+                {% endif %}
+            </div>
+            {% endif %}
         </form>
+
+        {% if current_user.role.name in ['Admin', 'Project Manager'] %}
+        <form method="POST" action="{{ url_for('time_tracking_bp.approve_all') }}" class="m-0 p-0">
+            <input type="hidden" name="project_id" value="{{ current_project or '' }}">
+            <input type="hidden" name="search" value="{{ search_query or '' }}">
+            <button type="submit" class="btn btn-success shadow-sm"
+                onclick="return confirm('Are you sure you want to approve all pending timesheets matching the current filter?')">
+                <i class="bi bi-check-all me-1"></i> Approve All
+            </button>
+        </form>
+        {% endif %}
         {% if current_user.role.name not in ['Admin', 'Accountant'] %}
         <a href="{{ url_for('time_tracking_bp.log_time') }}" class="btn btn-primary shadow-sm">
             <i class="bi bi-clock-history me-1"></i> Log Time
@@ -55,9 +83,9 @@
                         <td>
                             <div>{{ ts.project.name }}</div>
                             {% if ts.is_billable %}
-                                <span class="badge badge-soft-primary" style="font-size: 0.65rem;">Billable</span>
+                            <span class="badge badge-soft-primary" style="font-size: 0.65rem;">Billable</span>
                             {% else %}
-                                <span class="badge badge-soft-secondary" style="font-size: 0.65rem;">Non-Billable</span>
+                            <span class="badge badge-soft-secondary" style="font-size: 0.65rem;">Non-Billable</span>
                             {% endif %}
                         </td>
                         <td class="text-center fw-bold">
@@ -67,20 +95,23 @@
                         </td>
                         <td>
                             {% if ts.status == 'Pending' %}
-                                <span class="badge badge-soft-warning">Pending</span>
+                            <span class="badge badge-soft-warning">Pending</span>
                             {% elif ts.status == 'Approved' %}
-                                <span class="badge badge-soft-success">Approved</span>
+                            <span class="badge badge-soft-success">Approved</span>
                             {% elif ts.status == 'Rejected' %}
-                                <span class="badge badge-soft-danger">Rejected</span>
+                            <span class="badge badge-soft-danger">Rejected</span>
                             {% else %}
-                                <span class="badge badge-soft-secondary">{{ ts.status }}</span>
+                            <span class="badge badge-soft-secondary">{{ ts.status }}</span>
                             {% endif %}
                         </td>
                         <td class="text-end pe-4">
-                            {% if current_user.role.name in ['Admin', 'Project Manager'] and ts.status == 'Pending' and not (ts.employee_id == current_user.employee.id and current_user.role.name != 'Admin') %}
-                            <a href="{{ url_for('time_tracking_bp.review_timesheet', timesheet_id=ts.id) }}" class="btn btn-action btn-action-primary">Review</a>
+                            {% if current_user.role.name in ['Admin', 'Project Manager'] and ts.status == 'Pending' and
+                            not (ts.employee_id == current_user.employee.id and current_user.role.name != 'Admin') %}
+                            <a href="{{ url_for('time_tracking_bp.review_timesheet', timesheet_id=ts.id) }}"
+                                class="btn btn-action btn-action-primary">Review</a>
                             {% else %}
-                            <a href="{{ url_for('time_tracking_bp.view_timesheet', timesheet_id=ts.id) }}" class="btn btn-action">View</a>
+                            <a href="{{ url_for('time_tracking_bp.view_timesheet', timesheet_id=ts.id) }}"
+                                class="btn btn-action">View</a>
                             {% endif %}
                         </td>
                     </tr>

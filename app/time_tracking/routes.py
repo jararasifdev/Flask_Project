@@ -1,12 +1,13 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import Timesheet, Project, Expense, ExpenseCategory, EmployeeProject, Role, User
+from app.models import Timesheet, Project, Expense, ExpenseCategory, EmployeeProject, Role, User, Employee
 from app.forms import TimesheetForm, ReviewTimesheetForm
 from app.utils.decorators import role_required
 from app.utils.notifications import create_notification
 from datetime import datetime, date, timedelta
 from app.expenses.routes import check_budget_threshold
+from decimal import Decimal
 time_tracking_bp = Blueprint('time_tracking_bp', __name__)
 
 @time_tracking_bp.route('/timesheets')
@@ -14,6 +15,7 @@ time_tracking_bp = Blueprint('time_tracking_bp', __name__)
 def list_timesheets():
     status_filter = request.args.get('status')
     project_filter = request.args.get('project_id')
+    search_filter = request.args.get('search', '').strip()
 
     query = Timesheet.query
 
@@ -43,10 +45,12 @@ def list_timesheets():
         query = query.filter(Timesheet.status == status_filter)
     if project_filter:
         query = query.filter(Timesheet.project_id == project_filter)
+    if search_filter:
+        query = query.join(Employee, Timesheet.employee_id == Employee.id).filter(Employee.full_name.ilike(f'%{search_filter}%'))
         
     timesheets = query.order_by(Timesheet.work_date.desc()).all()
         
-    return render_template('time_tracking/index.html', timesheets=timesheets, projects=projects, current_status=status_filter, current_project=project_filter, title='Time Tracking')
+    return render_template('time_tracking/index.html', timesheets=timesheets, projects=projects, current_status=status_filter, current_project=project_filter, search_query=search_filter, title='Time Tracking')
 
 @time_tracking_bp.route('/timesheets/log', methods=['GET', 'POST'])
 @login_required
@@ -154,7 +158,7 @@ def review_timesheet(timesheet_id):
                 
             emp = timesheet.employee
             rate = emp.hourly_rate if emp.hourly_rate else (emp.monthly_salary / 160 if emp.monthly_salary else 0)
-            amount = float(timesheet.total_hours) * float(rate)
+            amount = Decimal(str(float(timesheet.total_hours) * float(rate)))
             
             expense = Expense(
                 company_id=current_user.company_id,
@@ -195,6 +199,71 @@ def view_timesheet(timesheet_id):
     if current_user.role.name not in ['Admin', 'Accountant', 'Project Manager']:
         if timesheet.employee_id != current_user.employee.id:
             flash('Access denied.', 'danger')
-            return redirect(url_for('time_tracking_bp.list_timesheets'))
-            
     return render_template('time_tracking/view.html', timesheet=timesheet, title='View Timesheet')
+
+@time_tracking_bp.route('/timesheets/approve_all', methods=['POST'])
+@login_required
+@role_required('Admin', 'Project Manager')
+def approve_all():
+    query = Timesheet.query.filter_by(company_id=current_user.company_id, status='Pending')
+    
+    if current_user.role.name == 'Project Manager':
+        query = query.join(Project).filter(Project.project_manager_id == current_user.employee.id)
+
+    project_filter = request.form.get('project_id')
+    search_filter = request.form.get('search', '').strip()
+    
+    if project_filter:
+        query = query.filter(Timesheet.project_id == project_filter)
+    if search_filter:
+        query = query.join(Employee, Timesheet.employee_id == Employee.id).filter(Employee.full_name.ilike(f'%{search_filter}%'))
+        
+    pending_timesheets = query.all()
+    count = 0
+    
+    category = None
+    for timesheet in pending_timesheets:
+        if timesheet.employee_id == current_user.employee.id and current_user.role.name != 'Admin':
+            continue
+            
+        timesheet.status = 'Approved'
+        timesheet.approved_by_employee_id = current_user.employee.id
+        timesheet.approved_at = datetime.utcnow()
+        count += 1
+        
+        if timesheet.is_billable:
+            if not category:
+                category = ExpenseCategory.query.filter_by(name='Billable Hours', company_id=current_user.company_id).first()
+                if not category:
+                    category = ExpenseCategory(name='Billable Hours', description='Approved billable timesheet hours', company_id=current_user.company_id)
+                    db.session.add(category)
+                    db.session.flush()
+                    
+            emp = timesheet.employee
+            rate = emp.hourly_rate if emp.hourly_rate else (emp.monthly_salary / 160 if emp.monthly_salary else 0)
+            amount = Decimal(str(float(timesheet.total_hours) * float(rate)))
+            
+            expense = Expense(
+                company_id=current_user.company_id,
+                project_id=timesheet.project_id,
+                employee_id=timesheet.employee_id,
+                category_id=category.id,
+                amount=amount,
+                description=f"Billable hours on {timesheet.work_date}: {timesheet.task_description or 'No description'}",
+                status='Approved',
+                approved_by_employee_id=current_user.employee.id
+            )
+            db.session.add(expense)
+            check_budget_threshold(timesheet.project)
+            
+        create_notification(
+            company_id=current_user.company_id,
+            user_id=timesheet.employee.user.id,
+            type_name='Timesheet Update',
+            title='Timesheet Approved',
+            message=f'Your timesheet for {timesheet.work_date.strftime("%Y-%m-%d")} on project {timesheet.project.name} has been approved.'
+        )
+        
+    db.session.commit()
+    flash(f'Successfully approved {count} pending timesheets.', 'success')
+    return redirect(url_for('time_tracking_bp.list_timesheets', project_id=project_filter, search=search_filter, status='Pending'))
