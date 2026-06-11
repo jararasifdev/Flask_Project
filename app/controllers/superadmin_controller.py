@@ -4,6 +4,7 @@ from app import db, bcrypt
 from app.models import Company, User, UserSession, Employee, Role
 import datetime
 import uuid
+from app.forms import CreateCompanyForm
 
 def login_action():
     if current_user.is_authenticated and current_user.is_superadmin:
@@ -81,23 +82,34 @@ def delete_company_action(company_id):
     return redirect(url_for('superadmin_bp.list_companies'))
 
 def create_company_action():
-    if request.method == 'POST':
-        company_name = request.form.get('company_name')
-        admin_name = request.form.get('admin_name')
-        admin_email = request.form.get('admin_email')
-        admin_password = request.form.get('admin_password')
+    form = CreateCompanyForm()
+    
+    if form.validate_on_submit():
+        company_name = form.company_name.data
+        registration_no = form.registration_no.data
+        tax_id = form.tax_id.data
+        address = form.address.data
+        phone = form.phone.data
+        company_email = form.company_email.data
         
-        if not all([company_name, admin_name, admin_email, admin_password]):
-            flash("All fields are required.", "danger")
-            return render_template('superadmin/create_company.html', title='Add Company')
-            
+        admin_name = form.admin_name.data
+        admin_email = form.admin_email.data
+        admin_password = form.admin_password.data
+        
         existing_user = User.query.filter_by(email=admin_email).first()
         if existing_user:
             flash("Email already registered in the system.", "danger")
-            return render_template('superadmin/create_company.html', title='Add Company')
+            return render_template('superadmin/create_company.html', title='Add Company', form=form)
             
         try:
-            company = Company(company_name=company_name)
+            company = Company(
+                company_name=company_name,
+                registration_no=registration_no,
+                tax_id=tax_id,
+                address=address,
+                phone=phone,
+                email=company_email
+            )
             db.session.add(company)
             db.session.flush()
             
@@ -133,7 +145,7 @@ def create_company_action():
             flash("An error occurred while provisioning the company.", "danger")
             print(f"Error creating company: {e}")
             
-    return render_template('superadmin/create_company.html', title='Add Company')
+    return render_template('superadmin/create_company.html', title='Add Company', form=form)
 
 def list_users_action():
     company_id = request.args.get('company_id')

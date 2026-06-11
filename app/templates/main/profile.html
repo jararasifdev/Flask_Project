@@ -54,8 +54,16 @@
                             <input type="text" class="form-control" value="{{ current_user.employee.department.name if current_user.employee.department else 'N/A' }}" disabled>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Monthly Salary</label>
-                            <input type="text" class="form-control" value="${{ current_user.employee.monthly_salary or '0.00' }}" disabled>
+                            {% if current_user.employee.monthly_salary %}
+                                <label class="form-label fw-semibold">Monthly Salary</label>
+                                <input type="text" class="form-control" value="${{ current_user.employee.monthly_salary }}" disabled>
+                            {% elif current_user.employee.hourly_rate %}
+                                <label class="form-label fw-semibold">Hourly Wage</label>
+                                <input type="text" class="form-control" value="${{ current_user.employee.hourly_rate }}/hr" disabled>
+                            {% else %}
+                                <label class="form-label fw-semibold">Compensation</label>
+                                <input type="text" class="form-control" value="Not Set" disabled>
+                            {% endif %}
                         </div>
                     </div>
 
