@@ -11,7 +11,8 @@ def register_action():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard_bp.dashboard'))
 
-    if request.args.get('secret') != 'admin_setup':
+    from flask import current_app
+    if request.args.get('secret') != current_app.config['ADMIN_SETUP_SECRET']:
         return redirect(url_for('auth_bp.login'))
 
     form = RegistrationForm()
@@ -110,8 +111,13 @@ def logout_action():
     session_record = UserSession.query.filter_by(user_id=current_user.id,is_active=True).first()
 
     if session_record:
-        session_record.is_active = False
-        db.session.commit()
+        try:
+            session_record.is_active = False
+            db.session.commit()
+        except SQLAlchemyError as e:
+            db.session.rollback()
+        except Exception as e:
+            db.session.rollback()
 
     logout_user()
     return redirect(url_for('auth_bp.login'))

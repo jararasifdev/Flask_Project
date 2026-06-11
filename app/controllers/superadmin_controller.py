@@ -5,12 +5,13 @@ from app.models import Company, User, UserSession, Employee, Role
 import datetime
 import uuid
 from app.forms import CreateCompanyForm
+from flask import current_app
 
 def login_action():
     if current_user.is_authenticated and current_user.is_superadmin:
         return redirect(url_for('superadmin_bp.dashboard'))
         
-    if request.args.get('secret') != 'master_key':
+    if request.args.get('secret') != current_app.config['SUPERADMIN_SECRET']:
         return redirect(url_for('auth_bp.login'))
         
     if request.method == 'POST':
@@ -33,10 +34,13 @@ def login_action():
                 ip_address=request.remote_addr,
                 user_agent=request.headers.get('User-Agent')
             )
-            db.session.add(user_session)
-            db.session.commit()
-            
-            return redirect(url_for('superadmin_bp.dashboard'))
+            try:
+                db.session.add(user_session)
+                db.session.commit()
+                return redirect(url_for('superadmin_bp.dashboard'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error creating session: {str(e)}', 'danger')
         else:
             flash('Invalid email or password.', 'danger')
             
@@ -73,7 +77,12 @@ def toggle_company_status_action(company_id):
         company.is_active = True
         flash(f"Company '{company.company_name}' has been activated.", 'success')
         
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating company status: {str(e)}', 'danger')
+        
     return redirect(url_for('superadmin_bp.list_companies'))
 
 def delete_company_action(company_id):
