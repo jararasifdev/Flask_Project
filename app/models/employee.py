@@ -15,5 +15,6 @@ class Employee(db.Model):
     joining_date = db.Column(db.Date, nullable=True)
     hourly_rate = db.Column(db.Numeric(10, 2), nullable=True)
     monthly_salary = db.Column(db.Numeric(10, 2), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
