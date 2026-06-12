@@ -47,3 +47,9 @@ MANIFEST
 
 #odt files
 *.odt
+
+# Test files
+.pytest_cache
+tests/
+
+
