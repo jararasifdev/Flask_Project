@@ -1,4 +1,5 @@
 {% extends "superadmin_base.html" %}
+{% from "macros/pagination.html" import render_pagination %}
 
 {% block content %}
 <div class="container mt-4">
@@ -61,6 +62,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="card-footer bg-white border-0 pt-3 pb-0">
+            {{ render_pagination(pagination, 'superadmin_bp.list_companies') }}
         </div>
     </div>
 </div>

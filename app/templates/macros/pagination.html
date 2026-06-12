@@ -1,6 +1,7 @@
 {% macro render_pagination(pagination, endpoint) %}
   {% if pagination and pagination.pages > 1 %}
   {% set kwargs = dict(request.args) %}
+  {% set _ = kwargs.update(request.view_args) %}
   {% set _ = kwargs.pop('page', None) %}
   <nav aria-label="Page navigation" class="mt-4">
     <ul class="pagination justify-content-center">

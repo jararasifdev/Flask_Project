@@ -106,12 +106,16 @@ def view_run_action(run_id):
     run = PayrollRun.query.filter_by(id=run_id, company_id=current_user.company_id).first_or_404()
     
     search_query = request.args.get('search', '').strip()
+    
+    query = PayrollItem.query.filter_by(payroll_run_id=run.id)
     if search_query:
-        items = [item for item in run.payroll_items if search_query.lower() in item.employee.full_name.lower()]
-    else:
-        items = run.payroll_items
+        query = query.join(Employee).filter(Employee.full_name.ilike(f'%{search_query}%'))
         
-    return render_template('payroll/view.html', run=run, items=items, search_query=search_query, title=f'Payroll Run - {run.payroll_month.strftime("%B %Y")}')
+    page = request.args.get('page', 1, type=int)
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    items = pagination.items
+        
+    return render_template('payroll/view.html', run=run, items=items, pagination=pagination, search_query=search_query, title=f'Payroll Run - {run.payroll_month.strftime("%B %Y")}')
 
 def edit_item_action(item_id):
     item = PayrollItem.query.join(PayrollRun).filter(PayrollItem.id == item_id, PayrollRun.company_id == current_user.company_id).first_or_404()
