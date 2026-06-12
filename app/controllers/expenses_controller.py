@@ -13,9 +13,12 @@ from app.models.user import User
 from app.models.role import Role
 
 def list_company_expenses_action():
-    expenses = CompanyExpense.query.filter_by(company_id=current_user.company_id).order_by(CompanyExpense.expense_date.desc()).all()
-    total_overhead = sum(e.amount for e in expenses)
-    return render_template('expenses/company.html', expenses=expenses, total_overhead=total_overhead, title='Company Expenses')
+    query = CompanyExpense.query.filter_by(company_id=current_user.company_id).order_by(CompanyExpense.expense_date.desc())
+    page = request.args.get('page', 1, type=int)
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    expenses = pagination.items
+    total_overhead = sum(e.amount for e in query.all())
+    return render_template('expenses/company.html', expenses=expenses, pagination=pagination, total_overhead=total_overhead, title='Company Expenses')
 
 def check_budget_threshold(project):
     total_approved = sum(exp.amount for exp in project.expenses if exp.status == 'Approved')
@@ -93,9 +96,11 @@ def list_expenses_action():
     if project_filter:
         query = query.filter(Expense.project_id == project_filter)
 
-    expenses = query.order_by(Expense.submitted_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = query.order_by(Expense.submitted_at.desc()).paginate(page=page, per_page=10, error_out=False)
+    expenses = pagination.items
 
-    return render_template('expenses/index.html', expenses=expenses, projects=projects, current_status=status_filter, current_project=project_filter, title='Expenses')
+    return render_template('expenses/index.html', expenses=expenses, pagination=pagination, projects=projects, current_status=status_filter, current_project=project_filter, title='Expenses')
 
 def submit_expense_action():
     form = ExpenseForm()

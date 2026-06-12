@@ -16,9 +16,11 @@ def get_weekdays_in_month(year, month):
     return weekdays
 
 def list_runs_action():
-    runs = PayrollRun.query.filter_by(company_id=current_user.company_id).order_by(PayrollRun.payroll_month.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = PayrollRun.query.filter_by(company_id=current_user.company_id).order_by(PayrollRun.payroll_month.desc()).paginate(page=page, per_page=10, error_out=False)
+    runs = pagination.items
     form = GeneratePayrollForm()
-    return render_template('payroll/index.html', runs=runs, form=form, title='Payroll Management')
+    return render_template('payroll/index.html', runs=runs, pagination=pagination, form=form, title='Payroll Management')
 
 def generate_payroll_action():
     form = GeneratePayrollForm()

@@ -1,4 +1,4 @@
-from flask import jsonify, render_template
+from flask import jsonify, render_template, request
 from flask_login import current_user
 from app import db
 from app.models import Notification
@@ -34,5 +34,7 @@ def mark_read_action(notif_id):
     return jsonify({'success': True})
 
 def list_notifications_action():
-    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
-    return render_template('notifications/index.html', notifications=notifications, title='All Notifications')
+    page = request.args.get('page', 1, type=int)
+    pagination = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).paginate(page=page, per_page=10, error_out=False)
+    notifications = pagination.items
+    return render_template('notifications/index.html', notifications=notifications, pagination=pagination, title='All Notifications')

@@ -21,8 +21,10 @@ def list_invoices_action():
     if client_filter:
         query = query.filter(Invoice.client_id == client_filter)
 
-    invoices = query.order_by(Invoice.issue_date.desc()).all()
-    return render_template('invoices/index.html', invoices=invoices, clients=clients, current_status=status_filter, current_client=client_filter, title='Invoices')
+    page = request.args.get('page', 1, type=int)
+    pagination = query.order_by(Invoice.issue_date.desc()).paginate(page=page, per_page=10, error_out=False)
+    invoices = pagination.items
+    return render_template('invoices/index.html', invoices=invoices, pagination=pagination, clients=clients, current_status=status_filter, current_client=client_filter, title='Invoices')
 
 def create_invoice_action():
     form = InvoiceForm()

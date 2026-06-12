@@ -5,8 +5,10 @@ from app.models import Department, Employee, User, Role
 from app.forms import DepartmentForm, AssignEmployeeForm
 
 def list_departments_action():
-    departments = Department.query.filter_by(company_id=current_user.company_id, is_active=True).all()
-    return render_template('departments/list.html', departments=departments, title="Manage Departments")
+    page = request.args.get('page', 1, type=int)
+    pagination = Department.query.filter_by(company_id=current_user.company_id, is_active=True).paginate(page=page, per_page=10, error_out=False)
+    departments = pagination.items
+    return render_template('departments/list.html', departments=departments, pagination=pagination, title="Manage Departments")
 
 def create_department_action():
     form = DepartmentForm()

@@ -44,9 +44,11 @@ def list_timesheets_action():
     if search_filter:
         query = query.join(Employee, Timesheet.employee_id == Employee.id).filter(Employee.full_name.ilike(f'%{search_filter}%'))
         
-    timesheets = query.order_by(Timesheet.work_date.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = query.order_by(Timesheet.work_date.desc()).paginate(page=page, per_page=10, error_out=False)
+    timesheets = pagination.items
         
-    return render_template('time_tracking/index.html', timesheets=timesheets, projects=projects, current_status=status_filter, current_project=project_filter, search_query=search_filter, title='Time Tracking')
+    return render_template('time_tracking/index.html', timesheets=timesheets, pagination=pagination, projects=projects, current_status=status_filter, current_project=project_filter, search_query=search_filter, title='Time Tracking')
 
 def log_time_action():
     form = TimesheetForm()

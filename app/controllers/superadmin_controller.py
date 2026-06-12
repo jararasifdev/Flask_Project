@@ -59,8 +59,10 @@ def dashboard_action():
                            title='Super Admin Dashboard')
 
 def list_companies_action():
-    companies = Company.query.order_by(Company.created_at.desc()).all()
-    return render_template('superadmin/companies.html', companies=companies, title='Manage Companies')
+    page = request.args.get('page', 1, type=int)
+    pagination = Company.query.order_by(Company.created_at.desc()).paginate(page=page, per_page=10, error_out=False)
+    companies = pagination.items
+    return render_template('superadmin/companies.html', companies=companies, pagination=pagination, title='Manage Companies')
 
 def toggle_company_status_action(company_id):
     company = Company.query.get_or_404(company_id)
@@ -165,7 +167,9 @@ def list_users_action():
     if company_id:
         query = query.filter_by(company_id=company_id)
         
-    users = query.filter(User.role_id != None).order_by(User.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = query.filter(User.role_id != None).order_by(User.created_at.desc()).paginate(page=page, per_page=10, error_out=False)
+    users = pagination.items
     companies = Company.query.order_by(Company.company_name.asc()).all()
     
-    return render_template('superadmin/users.html', users=users, companies=companies, selected_company_id=company_id, title='All Users')
+    return render_template('superadmin/users.html', users=users, pagination=pagination, companies=companies, selected_company_id=company_id, title='All Users')

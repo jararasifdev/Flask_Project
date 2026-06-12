@@ -21,8 +21,10 @@ def list_employees_action():
             )
         )
         
-    employees = query.all()
-    return render_template('employees/list.html', employees=employees, search_query=search_query, title="Manage Employees")
+    page = request.args.get('page', 1, type=int)
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    employees = pagination.items
+    return render_template('employees/list.html', employees=employees, pagination=pagination, search_query=search_query, title="Manage Employees")
 
 def create_employee_action():
     form = AddEmployeeForm()

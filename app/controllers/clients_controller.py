@@ -13,8 +13,10 @@ def list_clients_action():
                                     Client.company_name.ilike(f'%{search_query}%'),
                                     Client.email.ilike(f'%{search_query}%'),
                                     ))
-    clients = query.order_by(Client.client_name.asc()).all()
-    return render_template('clients/index.html', clients=clients, form=form, search_query=search_query)
+    page = request.args.get('page', 1, type=int)
+    pagination = query.order_by(Client.client_name.asc()).paginate(page=page, per_page=10, error_out=False)
+    clients = pagination.items
+    return render_template('clients/index.html', clients=clients, pagination=pagination, form=form, search_query=search_query)
 
 def add_client_action():
     form = ClientForm()

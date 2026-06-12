@@ -73,9 +73,11 @@ def create_project_action():
     if status_filter:
         query = query.filter(Project.status == status_filter)
 
-    projects = query.all()
+    page = request.args.get('page', 1, type=int)
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    projects = pagination.items
 
-    return render_template('projects/index.html', form=form, projects=projects, title='Projects', current_status=status_filter)
+    return render_template('projects/index.html', form=form, projects=projects, pagination=pagination, title='Projects', current_status=status_filter)
 
 def view_project_action(project_id):
     project = Project.query.filter_by(id=project_id, company_id=current_user.company_id).first_or_404()
