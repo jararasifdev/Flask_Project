@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import current_app, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from datetime import datetime, timezone
 from app import db
@@ -16,11 +16,12 @@ def create_project_action():
 
     form = ProjectForm()
     
-    clients = Client.query.filter_by(company_id=current_user.company_id).all()
+    clients = Client.query.filter_by(company_id=current_user.company_id, is_active=True).all()
     form.client_id.choices = [(c.id, c.client_name) for c in clients]
     
     project_managers = Employee.query.join(User).join(Role).filter(
         Employee.company_id == current_user.company_id,
+        Employee.is_active == True,
         Role.name == 'Project Manager'
     ).all()
     form.project_manager_id.choices = [('', 'Select Manager')] + [(e.id, e.full_name) for e in project_managers]
@@ -41,10 +42,15 @@ def create_project_action():
             start_date=form.start_date.data,
             estimated_end_date=form.estimated_end_date.data
         )
-        db.session.add(project)
-        db.session.commit()
-        flash('Project created successfully!', 'success')
-        return redirect(url_for('projects_bp.create_project'))
+        try:
+            db.session.add(project)
+            db.session.commit()
+            flash('Project created successfully!', 'success')
+            return redirect(url_for('projects_bp.create_project'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error creating project: {str(e)}')
+            flash('Error creating project. Please try again.', 'danger')
 
     status_filter = request.args.get('status')
 
@@ -100,6 +106,7 @@ def view_project_action(project_id):
     assigned_ids = [e.id for e in active_employees]
     query = Employee.query.join(User).join(Role).filter(
         Employee.company_id == current_user.company_id,
+        Employee.is_active == True,
         Role.name == 'Employee'
     )
     if assigned_ids:
@@ -122,6 +129,7 @@ def assign_project_action(project_id):
     assigned_ids = [a.employee_id for a in EmployeeProject.query.filter_by(project_id=project.id, removed_at=None).all()]
     query = Employee.query.join(User).join(Role).filter(
         Employee.company_id == current_user.company_id,
+        Employee.is_active == True,
         Role.name == 'Employee'
     )
     if assigned_ids:
@@ -132,10 +140,15 @@ def assign_project_action(project_id):
     if assign_form.validate_on_submit():
         emp_id = assign_form.employee_id.data
         if not EmployeeProject.query.filter_by(employee_id=emp_id, project_id=project.id, removed_at=None).first():
-            assignment = EmployeeProject(employee_id=emp_id, project_id=project.id)
-            db.session.add(assignment)
-            db.session.commit()
-            flash('Employee assigned to project successfully.', 'success')
+            try:
+                assignment = EmployeeProject(employee_id=emp_id, project_id=project.id)
+                db.session.add(assignment)
+                db.session.commit()
+                flash('Employee assigned to project successfully.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f'Error assigning employee: {str(e)}')
+                flash('Error assigning employee. Please try again.', 'danger')
         else:
             flash('Employee is already assigned to this project.', 'warning')
             
@@ -148,9 +161,14 @@ def remove_project_employee_action(project_id, employee_id):
         
     assignment = EmployeeProject.query.filter_by(project_id=project_id, employee_id=employee_id, removed_at=None).first()
     if assignment:
-        assignment.removed_at = datetime.now(timezone.utc)
-        db.session.commit()
-        flash('Employee removed from project.', 'success')
+        try:
+            assignment.removed_at = datetime.now(timezone.utc)
+            db.session.commit()
+            flash('Employee removed from project.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error removing employee: {str(e)}')
+            flash('Error removing employee. Please try again.', 'danger')
     return redirect(url_for('projects_bp.view_project', project_id=project_id))
 
 def change_project_status_action(project_id):
@@ -161,7 +179,12 @@ def change_project_status_action(project_id):
     project = Project.query.filter_by(id=project_id, company_id=current_user.company_id).first_or_404()
     status = request.form.get('status')
     if status in ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled']:
-        project.status = status
-        db.session.commit()
-        flash('Project status updated.', 'success')
+        try:
+            project.status = status
+            db.session.commit()
+            flash('Project status updated.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error updating project status: {str(e)}')
+            flash('Error updating project status. Please try again.', 'danger')
     return redirect(url_for('projects_bp.view_project', project_id=project.id))

@@ -40,7 +40,8 @@ def login_action():
                 return redirect(url_for('superadmin_bp.dashboard'))
             except Exception as e:
                 db.session.rollback()
-                flash(f'Error creating session: {str(e)}', 'danger')
+                current_app.logger.error(f'Error creating session: {str(e)}')
+                flash('Error creating session. Please try again.', 'danger')
         else:
             flash('Invalid email or password.', 'danger')
             
@@ -81,7 +82,8 @@ def toggle_company_status_action(company_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(f'Error updating company status: {str(e)}', 'danger')
+        current_app.logger.error(f'Error updating company status: {str(e)}')
+        flash('Error updating company status. Please try again.', 'danger')
         
     return redirect(url_for('superadmin_bp.list_companies'))
 

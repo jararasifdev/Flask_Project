@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import current_app, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from app import db
 from app.models.client import Client
@@ -7,7 +7,7 @@ from app.forms.client_forms import ClientForm
 def list_clients_action():
     form = ClientForm()
     search_query = request.args.get('search', '').strip()
-    query = Client.query.filter_by(company_id=current_user.company_id)
+    query = Client.query.filter_by(company_id=current_user.company_id, is_active=True)
     if search_query:
         query = query.filter(db.or_(Client.client_name.ilike(f'%{search_query}%'),
                                     Client.company_name.ilike(f'%{search_query}%'),
@@ -27,9 +27,14 @@ def add_client_action():
             phone=form.phone.data,
             address=form.address.data
         )
-        db.session.add(client)
-        db.session.commit()
-        flash('Client added successfully!', 'success')
+        try:
+            db.session.add(client)
+            db.session.commit()
+            flash('Client added successfully!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error adding client: {str(e)}')
+            flash('Error adding client. Please try again.', 'danger')
     else:
         for field, errors in form.errors.items():
             for error in errors:
@@ -38,7 +43,12 @@ def add_client_action():
 
 def delete_client_action(client_id):
     client = Client.query.filter_by(id=client_id, company_id=current_user.company_id).first_or_404()
-    db.session.delete(client)
-    db.session.commit()
-    flash('Client deleted successfully!', 'success')
+    try:
+        client.is_active = False
+        db.session.commit()
+        flash('Client deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting client: {str(e)}')
+        flash('Error deleting client. Please try again.', 'danger')
     return redirect(url_for('clients_bp.list_clients'))

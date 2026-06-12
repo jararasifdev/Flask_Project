@@ -173,10 +173,14 @@ def submit_expense_action():
                     message=f"{current_user.employee.full_name} submitted a new expense of ${expense.amount} for project '{project.name}'."
                 )
                 
-        db.session.commit()
-
-        flash('Expense submitted successfully!', 'success')
-        return redirect(url_for('expenses_bp.list_expenses'))
+        try:
+            db.session.commit()
+            flash('Expense submitted successfully!', 'success')
+            return redirect(url_for('expenses_bp.list_expenses'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error submitting expense: {str(e)}')
+            flash('Error submitting expense. Please try again.', 'danger')
 
     return render_template('expenses/submit.html', form=form)
 
@@ -196,24 +200,29 @@ def review_expense_action(expense_id):
         expense.approved_by_employee_id = current_user.employee.id if current_user.employee else None
         expense.approved_at = datetime.utcnow()
         
-        db.session.commit()
-        
-        if expense.status == 'Approved':
-            check_budget_threshold(expense.project)
-            db.session.commit()
-        
-        if expense.employee and expense.employee.user_id:
-            create_notification(
-                company_id=current_user.company_id,
-                user_id=expense.employee.user_id,
-                type_name='Expense Update',
-                title=f'Expense {expense.status}',
-                message=f'Your expense of ${expense.amount} for project {expense.project.name} has been {expense.status.lower()}.'
-            )
+        try:
             db.session.commit()
             
-        flash(f'Expense {expense.status.lower()} successfully.', 'success')
-        return redirect(url_for('expenses_bp.list_expenses'))
+            if expense.status == 'Approved':
+                check_budget_threshold(expense.project)
+                db.session.commit()
+            
+            if expense.employee and expense.employee.user_id:
+                create_notification(
+                    company_id=current_user.company_id,
+                    user_id=expense.employee.user_id,
+                    type_name='Expense Update',
+                    title=f'Expense {expense.status}',
+                    message=f'Your expense of ${expense.amount} for project {expense.project.name} has been {expense.status.lower()}.'
+                )
+                db.session.commit()
+                
+            flash(f'Expense {expense.status.lower()} successfully.', 'success')
+            return redirect(url_for('expenses_bp.list_expenses'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error updating expense: {str(e)}')
+            flash('Error updating expense. Please try again.', 'danger')
 
     return render_template('expenses/review.html', form=form, expense=expense)
 
@@ -225,10 +234,15 @@ def manage_categories_action():
             name=form.name.data,
             description=form.description.data
         )
-        db.session.add(category)
-        db.session.commit()
-        flash('Category added successfully!', 'success')
-        return redirect(url_for('expenses_bp.manage_categories'))
+        try:
+            db.session.add(category)
+            db.session.commit()
+            flash('Category added successfully!', 'success')
+            return redirect(url_for('expenses_bp.manage_categories'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error adding category: {str(e)}')
+            flash('Error adding category. Please try again.', 'danger')
         
     categories = ExpenseCategory.query.filter_by(company_id=current_user.company_id).all()
     return render_template('expenses/categories.html', form=form, categories=categories)

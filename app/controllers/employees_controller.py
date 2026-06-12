@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import current_app, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from app import db, bcrypt
 from app.models import Employee, User, Role, Department, UserSession
@@ -9,6 +9,7 @@ def list_employees_action():
     
     query = Employee.query.join(User).join(Role).filter(
         Employee.company_id == current_user.company_id,
+        Employee.is_active == True,
         Role.name != 'Admin'
     )
     
@@ -29,7 +30,7 @@ def create_employee_action():
     roles = Role.query.all()
     form.role_id.choices = [(r.id, r.name) for r in roles if r.name != 'Admin']
     
-    departments = Department.query.filter_by(company_id=current_user.company_id).all()
+    departments = Department.query.filter_by(company_id=current_user.company_id, is_active=True).all()
     form.department_id.choices = [('', 'No Department')] + [(d.id, d.name) for d in departments]
 
     if form.validate_on_submit():
@@ -62,11 +63,15 @@ def create_employee_action():
             hourly_rate=form.hourly_rate.data,
             monthly_salary=form.monthly_salary.data
         )
-        db.session.add(employee)
-        db.session.commit()
-        
-        flash('Employee account successfully created!', 'success')
-        return redirect(url_for('employees_bp.list_employees'))
+        try:
+            db.session.add(employee)
+            db.session.commit()
+            flash('Employee account successfully created!', 'success')
+            return redirect(url_for('employees_bp.list_employees'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error creating employee: {str(e)}')
+            flash('Error creating employee. Please try again.', 'danger')
 
     return render_template('employees/create.html', form=form, title="Add Employee")
 
@@ -78,7 +83,7 @@ def edit_employee_action(employee_id):
     roles = Role.query.all()
     form.role_id.choices = [(r.id, r.name) for r in roles if r.name != 'Admin']
     
-    departments = Department.query.filter_by(company_id=current_user.company_id).all()
+    departments = Department.query.filter_by(company_id=current_user.company_id, is_active=True).all()
     form.department_id.choices = [('', 'No Department')] + [(d.id, d.name) for d in departments]
 
     if form.validate_on_submit():
@@ -100,9 +105,14 @@ def edit_employee_action(employee_id):
         employee.hourly_rate = form.hourly_rate.data
         employee.monthly_salary = form.monthly_salary.data
         
-        db.session.commit()
-        flash('Employee profile successfully updated!', 'success')
-        return redirect(url_for('employees_bp.list_employees'))
+        try:
+            db.session.commit()
+            flash('Employee profile successfully updated!', 'success')
+            return redirect(url_for('employees_bp.list_employees'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error updating employee: {str(e)}')
+            flash('Error updating employee. Please try again.', 'danger')
 
     elif request.method == 'GET':
         form.full_name.data = employee.full_name
@@ -125,10 +135,15 @@ def delete_employee_action(employee_id):
         flash('You cannot delete your own account.', 'danger')
         return redirect(url_for('employees_bp.list_employees'))
 
-    UserSession.query.filter_by(user_id=user.id).delete()
-    db.session.delete(employee)
-    db.session.delete(user)
-    db.session.commit()
-    
-    flash('Employee account deleted successfully.', 'success')
+    try:
+        UserSession.query.filter_by(user_id=user.id).delete()
+        user.is_active = False
+        employee.is_active = False
+        db.session.commit()
+        flash('Employee account deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting employee: {str(e)}')
+        flash('Error deleting employee. Please try again.', 'danger')
+        
     return redirect(url_for('employees_bp.list_employees'))

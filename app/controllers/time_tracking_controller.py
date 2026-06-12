@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import current_app,render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from app import db
 from app.models import Timesheet, Project, Expense, ExpenseCategory, EmployeeProject, Role, User, Employee
@@ -119,9 +119,14 @@ def log_time_action():
                     message=f"{current_user.employee.full_name} logged {total_hours:.2f} hours for project '{project.name}'."
                 )
                 
-        db.session.commit()
-        flash('Time logged successfully.', 'success')
-        return redirect(url_for('time_tracking_bp.list_timesheets'))
+        try:
+            db.session.commit()
+            flash('Time logged successfully.', 'success')
+            return redirect(url_for('time_tracking_bp.list_timesheets'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error logging time: {str(e)}')
+            flash('Error logging time. Please try again.', 'danger')
         
     return render_template('time_tracking/log_time.html', form=form, title='Log Time')
 
@@ -135,50 +140,55 @@ def review_timesheet_action(timesheet_id):
     form = ReviewTimesheetForm()
     
     if form.validate_on_submit():
-        timesheet.status = form.status.data
-        timesheet.approved_by_employee_id = current_user.employee.id
-        timesheet.approved_at = datetime.utcnow()
-        db.session.commit()
-        
-        if form.status.data == 'Approved' and timesheet.is_billable:
-            category = ExpenseCategory.query.filter_by(name='Billable Hours', company_id=current_user.company_id).first()
-            if not category:
-                category = ExpenseCategory(name='Billable Hours', description='Approved billable timesheet hours', company_id=current_user.company_id)
-                db.session.add(category)
-                db.session.flush()
-                
-            emp = timesheet.employee
-            rate = emp.hourly_rate if emp.hourly_rate else (emp.monthly_salary / 160 if emp.monthly_salary else 0)
-            amount = Decimal(str(float(timesheet.total_hours) * float(rate)))
+        try:
+            timesheet.status = form.status.data
+            timesheet.approved_by_employee_id = current_user.employee.id
+            timesheet.approved_at = datetime.utcnow()
+            db.session.commit()
             
-            expense = Expense(
-                company_id=current_user.company_id,
-                project_id=timesheet.project_id,
-                employee_id=timesheet.employee_id,
-                category_id=category.id,
-                amount=amount,
-                description=f"Billable hours on {timesheet.work_date}: {timesheet.task_description or 'No description'}",
-                status='Approved',
-                approved_by_employee_id=current_user.employee.id
-            )
-            db.session.add(expense)
-            db.session.commit()
+            if form.status.data == 'Approved' and timesheet.is_billable:
+                category = ExpenseCategory.query.filter_by(name='Billable Hours', company_id=current_user.company_id).first()
+                if not category:
+                    category = ExpenseCategory(name='Billable Hours', description='Approved billable timesheet hours', company_id=current_user.company_id)
+                    db.session.add(category)
+                    db.session.flush()
+                    
+                emp = timesheet.employee
+                rate = emp.hourly_rate if emp.hourly_rate else (emp.monthly_salary / 160 if emp.monthly_salary else 0)
+                amount = Decimal(str(float(timesheet.total_hours) * float(rate)))
+                
+                expense = Expense(
+                    company_id=current_user.company_id,
+                    project_id=timesheet.project_id,
+                    employee_id=timesheet.employee_id,
+                    category_id=category.id,
+                    amount=amount,
+                    description=f"Billable hours on {timesheet.work_date}: {timesheet.task_description or 'No description'}",
+                    status='Approved',
+                    approved_by_employee_id=current_user.employee.id
+                )
+                db.session.add(expense)
+                db.session.commit()
 
-            check_budget_threshold(timesheet.project)
+                check_budget_threshold(timesheet.project)
+                db.session.commit()
+            
+            status_word = "Approved" if form.status.data == 'Approved' else "Rejected"
+            create_notification(
+                company_id=current_user.company_id,
+                user_id=timesheet.employee.user.id,
+                type_name='Timesheet Update',
+                title=f'Timesheet {status_word}',
+                message=f'Your timesheet for {timesheet.work_date.strftime("%Y-%m-%d")} on project {timesheet.project.name} has been {status_word.lower()}.'
+            )
             db.session.commit()
-        
-        status_word = "Approved" if form.status.data == 'Approved' else "Rejected"
-        create_notification(
-            company_id=current_user.company_id,
-            user_id=timesheet.employee.user.id,
-            type_name='Timesheet Update',
-            title=f'Timesheet {status_word}',
-            message=f'Your timesheet for {timesheet.work_date.strftime("%Y-%m-%d")} on project {timesheet.project.name} has been {status_word.lower()}.'
-        )
-        db.session.commit()
-        
-        flash(f'Timesheet {status_word.lower()} successfully.', 'success')
-        return redirect(url_for('time_tracking_bp.list_timesheets'))
+            
+            flash(f'Timesheet {status_word.lower()} successfully.', 'success')
+            return redirect(url_for('time_tracking_bp.list_timesheets'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error reviewing timesheet: {str(e)}')
+            flash(f'Error reviewing timesheet. Please try again.', 'danger')
         
     return render_template('time_tracking/review.html', timesheet=timesheet, form=form, title='Review Timesheet')
 
@@ -250,6 +260,12 @@ def approve_all_action():
             message=f'Your timesheet for {timesheet.work_date.strftime("%Y-%m-%d")} on project {timesheet.project.name} has been approved.'
         )
         
-    db.session.commit()
-    flash(f'Successfully approved {count} pending timesheets.', 'success')
+    try:
+        db.session.commit()
+        flash(f'Successfully approved {count} pending timesheets.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error approving timesheets: {str(e)}')
+        flash(f'Error approving timesheets. Please try again.', 'danger')
+        
     return redirect(url_for('time_tracking_bp.list_timesheets', project_id=project_filter, search=search_filter, status='Pending'))
