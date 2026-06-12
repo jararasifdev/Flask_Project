@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import current_app, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from app import db
 from app.models import PayrollRun, PayrollItem, Employee, Timesheet, CompanyExpense
@@ -88,9 +88,14 @@ def generate_payroll_action():
             )
             db.session.add(item)
             
-        db.session.commit()
-        flash('Payroll generated successfully.', 'success')
-        return redirect(url_for('payroll_bp.view_run', run_id=new_run.id))
+        try:
+            db.session.commit()
+            flash('Payroll generated successfully.', 'success')
+            return redirect(url_for('payroll_bp.view_run', run_id=new_run.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error generating payroll: {str(e)}')
+            flash('Error generating payroll. Please try again.', 'danger')
         
     flash('Invalid form submission.', 'danger')
     return redirect(url_for('payroll_bp.list_runs'))
@@ -123,9 +128,14 @@ def edit_item_action(item_id):
         item.deductions = form.deductions.data or 0
         item.net_salary = item.base_salary + item.overtime_amount + item.bonus_amount - item.deductions
         
-        db.session.commit()
-        flash('Payroll item updated successfully.', 'success')
-        return redirect(url_for('payroll_bp.view_run', run_id=run.id))
+        try:
+            db.session.commit()
+            flash('Payroll item updated successfully.', 'success')
+            return redirect(url_for('payroll_bp.view_run', run_id=run.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error updating payroll item: {str(e)}')
+            flash('Error updating payroll item. Please try again.', 'danger')
         
     elif request.method == 'GET':
         form.base_salary.data = item.base_salary
@@ -160,6 +170,11 @@ def approve_run_action(run_id):
             )
             db.session.add(expense)
             
-    db.session.commit()
-    flash('Payroll run approved and finalized.', 'success')
+    try:
+        db.session.commit()
+        flash('Payroll run approved and finalized.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error approving payroll run: {str(e)}')
+        flash('Error approving payroll run. Please try again.', 'danger')
     return redirect(url_for('payroll_bp.view_run', run_id=run.id))

@@ -1,7 +1,7 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import current_app, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from app import db
-from app.models import Invoice, InvoiceItem, Payment, Client, Project
+from app.models import Invoice, InvoiceItem, Payment, Client, Project, Expense
 from app.forms import InvoiceForm, InvoiceItemForm, PaymentForm, InvoiceStatusForm
 from datetime import datetime
 from sqlalchemy import func
@@ -85,9 +85,14 @@ def create_invoice_action():
         invoice.subtotal = subtotal
         invoice.total_amount = subtotal + invoice.tax_amount
         
-        db.session.commit()
-        flash('Invoice created successfully.', 'success')
-        return redirect(url_for('invoices_bp.view_invoice', invoice_id=invoice.id))
+        try:
+            db.session.commit()
+            flash('Invoice created successfully.', 'success')
+            return redirect(url_for('invoices_bp.view_invoice', invoice_id=invoice.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error creating invoice: {str(e)}')
+            flash('Error creating invoice. Please try again.', 'danger')
         
     return render_template('invoices/create.html', form=form, title='Create Invoice')
 
@@ -103,8 +108,13 @@ def update_invoice_status_action(invoice_id):
     form = InvoiceStatusForm()
     if form.validate_on_submit():
         invoice.status = form.status.data
-        db.session.commit()
-        flash('Invoice status updated successfully.', 'success')
+        try:
+            db.session.commit()
+            flash('Invoice status updated successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error updating invoice status: {str(e)}')
+            flash('Error updating invoice status. Please try again.', 'danger')
     return redirect(url_for('invoices_bp.view_invoice', invoice_id=invoice.id))
 
 def add_item_action(invoice_id):
@@ -123,9 +133,13 @@ def add_item_action(invoice_id):
 
         invoice.subtotal += amount
         invoice.total_amount = invoice.subtotal + invoice.tax_amount
-        db.session.commit()
-        
-        flash('Item added successfully.', 'success')
+        try:
+            db.session.commit()
+            flash('Item added successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error adding invoice item: {str(e)}')
+            flash('Error adding item. Please try again.', 'danger')
     return redirect(url_for('invoices_bp.view_invoice', invoice_id=invoice.id))
 
 def add_payment_action(invoice_id):
@@ -160,13 +174,28 @@ def add_payment_action(invoice_id):
             else:
                 invoice.status = 'Partial'
             
-        db.session.commit()
-        flash('Payment recorded successfully.', 'success')
+        try:
+            db.session.commit()
+            flash('Payment recorded successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error recording payment: {str(e)}')
+            flash('Error recording payment. Please try again.', 'danger')
     return redirect(url_for('invoices_bp.view_invoice', invoice_id=invoice.id))
 
 def delete_invoice_action(invoice_id):
-    invoice = Invoice.query.filter_by(id=invoice_id, company_id=current_user.company_id).first_or_404()
-    db.session.delete(invoice)
-    db.session.commit()
-    flash('Invoice deleted successfully.', 'success')
+    invoice = Invoice.query.filter_by(id=invoice_id, company_id=current_user.company_id,status='Draft').first_or_404()
+    try:
+        expenses = Expense.query.filter_by(invoice_id=invoice.id).all()
+        for expense in expenses:
+            expense.is_invoiced = False
+            expense.invoice_id = None
+            
+        db.session.delete(invoice)
+        db.session.commit()
+        flash('Invoice deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting invoice: {str(e)}')
+        flash('Error deleting invoice. Please try again.', 'danger')
     return redirect(url_for('invoices_bp.list_invoices'))
